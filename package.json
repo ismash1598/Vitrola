@@ -1,0 +1,24 @@
+{
+  "name": "meuplayer",
+  "version": "1.0.0",
+  "description": "Bot de Discord + interface web de busca/player, com playlists e evolucao futura para APK Android",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@discordjs/voice": "^0.19.2",
+    "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "ffmpeg-static": "^5.2.0",
+    "libsodium-wrappers": "^0.7.13",
+    "lowdb": "1.0.0",
+    "opusscript": "^0.0.8",
+    "yt-dlp-exec": "^1.0.2"
+  }
+}

@@ -1,0 +1,1629 @@
+(() => {
+  'use strict';
+
+  // ---------- Icones (SVG inline, sem dependencias externas) ----------
+  const ICONS = {
+    play: '<svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+    plus: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    playlistAdd: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h11M4 12h7M4 18h7M17 14v6M14 17h6"/></svg>',
+    remove: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    heartOutline: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.6-7-9.4A4.1 4.1 0 0112 8a4.1 4.1 0 017 2.6C19 15.4 12 20 12 20z"/></svg>',
+    heartFilled: '<svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20s-7-4.6-7-9.4A4.1 4.1 0 0112 8a4.1 4.1 0 017 2.6C19 15.4 12 20 12 20z"/></svg>',
+    trash: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',
+    lock: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>',
+    users: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
+    globe: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>',
+  };
+
+  const VISIBILITY_BADGE_ICON = { private: 'lock', server: 'users', public: 'globe' };
+  const VISIBILITY_BADGE_LABEL = { private: 'Privada', server: 'Servidor', public: 'Pública' };
+
+  // Categorias de playlist: nunca mistura playlist propria com playlist
+  // publica/do servidor de outra pessoa numa lista so. Favoritar uma
+  // playlist do servidor/publica de outra pessoa faz ela "migrar" pra
+  // "Suas playlists" tambem (sem sumir de onde ela normalmente apareceria
+  // pra quem nao favoritou).
+  const PLAYLIST_CATEGORIES = [
+    { key: 'private', label: 'Suas playlists' },
+    { key: 'server', label: 'Playlists do servidor' },
+    { key: 'public', label: 'Playlists públicas' },
+  ];
+
+  function isMinePlaylist(pl) {
+    return pl.ownerId === currentUser?.id || (pl.favoritedBy || []).includes(currentUser?.id);
+  }
+
+  function categorizePlaylistsForUser(lists) {
+    const groups = { private: [], server: [], public: [] };
+    lists.forEach((pl) => {
+      if (isMinePlaylist(pl)) {
+        groups.private.push(pl);
+      } else if (groups[pl.visibility]) {
+        groups[pl.visibility].push(pl);
+      }
+    });
+    return groups;
+  }
+
+  // ---------- Toast (aviso rapido de confirmacao) ----------
+  const toastEl = document.getElementById('toast');
+  let toastTimer = null;
+
+  function showToast(message) {
+    toastEl.textContent = message;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2200);
+  }
+
+  // ---------- Configuração (localStorage) ----------
+  const settings = {
+    get apiUrl() {
+      return localStorage.getItem('apiUrl') || window.location.origin;
+    },
+    set apiUrl(v) {
+      localStorage.setItem('apiUrl', v);
+    },
+    get sessionToken() {
+      return localStorage.getItem('sessionToken') || '';
+    },
+    set sessionToken(v) {
+      if (v) localStorage.setItem('sessionToken', v);
+      else localStorage.removeItem('sessionToken');
+    },
+    get currentGuildId() {
+      return localStorage.getItem('currentGuildId') || '';
+    },
+    set currentGuildId(v) {
+      localStorage.setItem('currentGuildId', v);
+    },
+  };
+
+  // Captura o token de sessao que volta na URL depois do login com Discord
+  // (?sessionToken=...) e limpa a URL.
+  (() => {
+    const url = new URL(window.location.href);
+    const token = url.searchParams.get('sessionToken');
+    if (token) {
+      settings.sessionToken = token;
+      url.searchParams.delete('sessionToken');
+      window.history.replaceState({}, '', url.toString());
+    }
+  })();
+
+  let currentUser = null;
+
+  async function api(path, options = {}) {
+    const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+    if (settings.sessionToken) headers['x-session-token'] = settings.sessionToken;
+
+    const res = await fetch(`${settings.apiUrl}/api${path}`, { ...options, headers });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `Erro ${res.status}`);
+    }
+    if (res.status === 204) return null;
+    return res.json();
+  }
+
+  function requireGuild() {
+    if (!currentUser) {
+      alert('Entre com Discord primeiro (ícone de configurações ⚙).');
+      return null;
+    }
+    if (!settings.currentGuildId) {
+      alert('Escolha um servidor nas configurações (ícone ⚙) primeiro.');
+      return null;
+    }
+    return settings.currentGuildId;
+  }
+
+  function formatTime(seconds) {
+    if (!seconds || !isFinite(seconds) || seconds < 0) return '0:00';
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }
+
+  function formatRemaining(elapsed, duration) {
+    if (!duration) return '0:00';
+    return `-${formatTime(Math.max(0, duration - elapsed))}`;
+  }
+
+  // ---------- Tabs ----------
+  function goToTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
+    document.getElementById(`tab-${tab}`).classList.add('active');
+  }
+
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => goToTab(btn.dataset.tab));
+  });
+
+  // Clicar na logo/nome "Vitrola" volta pra tela inicial (aba Buscar, limpa).
+  function goHome() {
+    document.querySelector('.tab-btn[data-tab="search"]').click();
+    document.querySelectorAll('.js-search-input').forEach((el) => (el.value = ''));
+    document.getElementById('search-results').innerHTML = '';
+    setSearchIdle(true);
+  }
+
+  document.querySelectorAll('.js-home-trigger').forEach((el) => {
+    el.addEventListener('click', goHome);
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        goHome();
+      }
+    });
+  });
+
+  // ---------- Conta / login com Discord ----------
+  const accountLoggedOutEl = document.getElementById('account-logged-out');
+  const accountLoggedInEl = document.getElementById('account-logged-in');
+  const guildSelectEl = document.getElementById('guild-select');
+
+  function goToDiscordLogin() {
+    window.location.href = `${settings.apiUrl}/auth/discord/login`;
+  }
+  document.getElementById('discord-login-btn').addEventListener('click', goToDiscordLogin);
+  document.getElementById('landing-login-btn').addEventListener('click', goToDiscordLogin);
+
+  document.getElementById('discord-logout-btn').addEventListener('click', async () => {
+    try {
+      await api('/logout', { method: 'POST' });
+    } catch {
+      // ignora erro de logout, limpa localmente de qualquer forma
+    }
+    settings.sessionToken = '';
+    currentUser = null;
+    refreshAccountUI();
+    renderPlaylists();
+  });
+
+  guildSelectEl.addEventListener('change', () => {
+    settings.currentGuildId = guildSelectEl.value;
+  });
+
+  document.getElementById('force-reset-btn').addEventListener('click', async () => {
+    const guildId = requireGuild();
+    if (!guildId) return;
+    if (!confirm('Isso desconecta o bot da call e para a música nesse servidor. Continuar?')) return;
+    try {
+      await api('/reset', { method: 'POST', body: JSON.stringify({ guildId }) });
+      showToast('Bot desconectado e player resetado');
+      refreshStatus();
+    } catch (err) {
+      alert(`Erro ao resetar: ${err.message}`);
+    }
+  });
+
+  async function refreshAccountUI() {
+    if (!settings.sessionToken) {
+      currentUser = null;
+    } else {
+      try {
+        currentUser = await api('/me');
+      } catch {
+        settings.sessionToken = '';
+        currentUser = null;
+      }
+    }
+
+    document.getElementById('landing-page').classList.toggle('hidden', !!currentUser);
+    accountLoggedOutEl.classList.toggle('hidden', !!currentUser);
+    accountLoggedInEl.classList.toggle('hidden', !currentUser);
+
+    // #landing-page nao e position:fixed - so cobre o primeiro "vh" da
+    // pagina. No celular (sem o overflow:hidden de tela unica do PC) a
+    // .bottom-bar (fixed) ficava aparecendo por cima da tela de login, dando
+    // acesso a busca/generos/etc antes mesmo de entrar com Discord.
+    document.querySelector('.app-shell').classList.toggle('hidden', !currentUser);
+    document.querySelector('.bottom-bar').classList.toggle('hidden', !currentUser);
+
+    document.querySelectorAll('.js-topbar-user-chip').forEach((el) => el.classList.toggle('hidden', !currentUser));
+    if (currentUser) {
+      document.querySelectorAll('.js-topbar-user-avatar').forEach((el) => (el.src = currentUser.avatar || ''));
+      document.querySelectorAll('.js-topbar-user-name').forEach((el) => (el.textContent = currentUser.username));
+    }
+
+    if (currentUser) {
+      document.getElementById('account-avatar').src = currentUser.avatar || '';
+      document.getElementById('account-username').textContent = currentUser.username;
+
+      try {
+        const guilds = await api('/guilds');
+        guildSelectEl.innerHTML = '';
+        guilds.forEach((g) => {
+          const opt = document.createElement('option');
+          opt.value = g.id;
+          opt.textContent = g.name;
+          guildSelectEl.appendChild(opt);
+        });
+
+        if (!guilds.some((g) => g.id === settings.currentGuildId) && guilds.length) {
+          settings.currentGuildId = guilds[0].id;
+        }
+        guildSelectEl.value = settings.currentGuildId;
+      } catch (err) {
+        console.error('Erro ao carregar servidores:', err.message);
+      }
+    } else {
+      guildSelectEl.innerHTML = '';
+    }
+  }
+
+  // ---------- Configurações ----------
+  const settingsModal = document.getElementById('settings-modal');
+  function openSettingsModal() {
+    refreshAccountUI();
+    settingsModal.classList.remove('hidden');
+  }
+  document.getElementById('settings-btn').addEventListener('click', openSettingsModal);
+  document.getElementById('settings-btn-desktop').addEventListener('click', openSettingsModal);
+  function closeSettingsModal() {
+    settingsModal.classList.add('hidden');
+  }
+  document.getElementById('settings-close-btn').addEventListener('click', closeSettingsModal);
+  document.getElementById('settings-close-x-btn').addEventListener('click', closeSettingsModal);
+  document.getElementById('settings-save-btn').addEventListener('click', closeSettingsModal);
+
+  // ---------- Helpers de renderização de faixa ----------
+  function trackRow(track, { onPlayNow, onAddQueue, onAddPlaylist, onRemove } = {}) {
+    const li = document.createElement('li');
+    li.className = 'track-item';
+
+    const img = document.createElement('img');
+    img.className = 'track-art';
+    img.src = track.albumArt || '';
+    img.alt = '';
+
+    const meta = document.createElement('div');
+    meta.className = 'track-meta';
+    meta.innerHTML = `
+      <div class="track-name">${escapeHtml(track.name)}</div>
+      <div class="track-artist">${escapeHtml((track.artists || []).join(', '))}</div>
+    `;
+
+    const duration = document.createElement('span');
+    duration.className = 'track-duration';
+    duration.textContent = track.durationMs ? formatTime(track.durationMs / 1000) : '';
+
+    const actions = document.createElement('div');
+    actions.className = 'track-actions';
+
+    if (onPlayNow) {
+      const b = document.createElement('button');
+      b.innerHTML = ICONS.play;
+      b.title = 'Tocar a seguir';
+      b.addEventListener('click', () => onPlayNow(track));
+      actions.appendChild(b);
+    }
+    if (onAddQueue) {
+      const b = document.createElement('button');
+      b.innerHTML = ICONS.plus;
+      b.title = 'Adicionar à fila';
+      b.addEventListener('click', () => onAddQueue(track));
+      actions.appendChild(b);
+    }
+    if (onAddPlaylist) {
+      const b = document.createElement('button');
+      b.innerHTML = ICONS.playlistAdd;
+      b.title = 'Adicionar à playlist';
+      b.addEventListener('click', () => onAddPlaylist(track));
+      actions.appendChild(b);
+    }
+    if (onRemove) {
+      const b = document.createElement('button');
+      b.innerHTML = ICONS.remove;
+      b.title = 'Remover';
+      b.addEventListener('click', () => onRemove());
+      actions.appendChild(b);
+    }
+
+    li.append(img, meta, duration, actions);
+    return li;
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+  }
+
+  // ---------- Acesso rápido (tela inicial da aba Buscar) ----------
+  const quickAccessEl = document.getElementById('quick-access');
+  const historySectionEl = document.getElementById('history-section');
+  const historyGridEl = document.getElementById('history-grid');
+
+  function goToPlaylist(id) {
+    document.querySelector('.tab-btn[data-tab="playlists"]').click();
+    openPlaylistDetail(id);
+  }
+
+  let isSearchIdle = true;
+
+  function updateQuickAccessVisibility() {
+    quickAccessEl.classList.toggle('hidden', !isSearchIdle);
+  }
+
+  // Placeholder de capa quando a faixa/playlist nao tem imagem: gradiente +
+  // letra inicial, no mesmo estilo do template (cor escolhida por hash do
+  // titulo, so pra nao repetir sempre a mesma).
+  const PLACEHOLDER_GRADIENTS = [
+    ['#7a8a5e', '#2c3320'],
+    ['#c67139', '#3a2114'],
+    ['#6d5a8a', '#241d33'],
+    ['#3a5a7a', '#15202b'],
+    ['#b0894a', '#332612'],
+    ['#8a4a4a', '#301818'],
+    ['#4a7a6a', '#152622'],
+    ['#8a7a4a', '#2b2614'],
+  ];
+
+  function hashStr(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+    return Math.abs(h);
+  }
+
+  function mediaArtHtml(title, art, className) {
+    if (art) {
+      return `<div class="${className}"><img src="${art}" alt="" /></div>`;
+    }
+    const [from, to] = PLACEHOLDER_GRADIENTS[hashStr(title || '?') % PLACEHOLDER_GRADIENTS.length];
+    const letter = escapeHtml((title || '?').trim().charAt(0).toUpperCase() || '?');
+    return `<div class="${className} ${className}--placeholder" style="background: linear-gradient(140deg, ${from}, ${to});"><span>${letter}</span></div>`;
+  }
+
+  async function renderHistoryGrid() {
+    if (!currentUser) {
+      historyGridEl.innerHTML = '';
+      historySectionEl.classList.add('hidden');
+      return;
+    }
+    try {
+      const tracks = await api('/history');
+      historyGridEl.innerHTML = '';
+      tracks.forEach((track) => {
+        const card = document.createElement('div');
+        card.className = 'hscroll-card';
+        card.innerHTML = `
+          ${mediaArtHtml(track.name, track.albumArt, 'hscroll-art')}
+          <div class="hscroll-text">
+            <div class="hscroll-title">${escapeHtml(track.name)}</div>
+            <div class="hscroll-subtitle">${escapeHtml((track.artists || []).join(', '))}</div>
+          </div>
+        `;
+        card.addEventListener('click', () => enqueueTrack(track, false));
+        historyGridEl.appendChild(card);
+      });
+      historySectionEl.classList.toggle('hidden', tracks.length === 0);
+      document.getElementById('history-count-badge').textContent = tracks.length ? `${tracks.length} faixas` : '';
+    } catch (err) {
+      console.error('Erro ao carregar histórico:', err.message);
+    }
+  }
+
+  function buildPlaylistCard(pl) {
+    const card = document.createElement('div');
+    card.className = 'hscroll-card';
+    const art = pl.tracks[0]?.albumArt || '';
+    card.innerHTML = `
+      ${mediaArtHtml(pl.name, art, 'hscroll-art')}
+      <div class="hscroll-text">
+        <div class="hscroll-title">${escapeHtml(pl.name)}</div>
+        <div class="hscroll-subtitle">${pl.tracks.length} faixa${pl.tracks.length === 1 ? '' : 's'}</div>
+      </div>
+    `;
+    card.addEventListener('click', () => goToPlaylist(pl.id));
+    return card;
+  }
+
+  function clearPlaylistQuickSections() {
+    PLAYLIST_CATEGORIES.forEach(({ key }) => {
+      document.getElementById(`playlists-quick-section-${key}`).classList.add('hidden');
+      document.getElementById(`quick-access-grid-${key}`).innerHTML = '';
+    });
+  }
+
+  async function renderPlaylistsQuickGrid() {
+    if (!currentUser) {
+      clearPlaylistQuickSections();
+      return;
+    }
+    try {
+      const lists = await api('/playlists');
+      const groups = categorizePlaylistsForUser(lists);
+      PLAYLIST_CATEGORIES.forEach(({ key }) => {
+        const gridEl = document.getElementById(`quick-access-grid-${key}`);
+        const sectionEl = document.getElementById(`playlists-quick-section-${key}`);
+        gridEl.innerHTML = '';
+        const items = groups[key].slice(0, 8);
+        items.forEach((pl) => gridEl.appendChild(buildPlaylistCard(pl)));
+        sectionEl.classList.toggle('hidden', items.length === 0);
+      });
+    } catch (err) {
+      console.error('Erro ao carregar playlists:', err.message);
+    }
+  }
+
+  async function renderSidebarPlaylists() {
+    const list = document.getElementById('sidebar-playlists-list');
+    if (!currentUser) {
+      list.innerHTML = '';
+      return;
+    }
+    try {
+      const lists = await api('/playlists');
+      const groups = categorizePlaylistsForUser(lists);
+      list.innerHTML = '';
+      PLAYLIST_CATEGORIES.forEach(({ key, label }) => {
+        const items = groups[key];
+        if (!items.length) return;
+        const heading = document.createElement('div');
+        heading.className = 'sidebar-section-label sidebar-playlist-category';
+        heading.textContent = label;
+        list.appendChild(heading);
+        items.forEach((pl) => {
+          const item = document.createElement('div');
+          item.className = 'sidebar-playlist-item';
+          const art = pl.tracks[0]?.albumArt || '';
+          item.innerHTML = `
+            ${mediaArtHtml(pl.name, art, 'sidebar-playlist-art')}
+            <div class="sidebar-playlist-text">
+              <div class="sidebar-playlist-name">${escapeHtml(pl.name)}</div>
+              <div class="sidebar-playlist-count">${pl.tracks.length} faixas</div>
+            </div>
+          `;
+          item.addEventListener('click', () => goToPlaylist(pl.id));
+          list.appendChild(item);
+        });
+      });
+    } catch (err) {
+      console.error('Erro ao carregar playlists da sidebar:', err.message);
+    }
+  }
+
+  async function renderQuickAccess() {
+    await Promise.all([renderHistoryGrid(), renderPlaylistsQuickGrid(), renderSidebarPlaylists()]);
+  }
+
+  // Generos genericos, so pra dar um ponto de partida na tela inicial - ao
+  // clicar, preenche a busca com o genero e pesquisa normalmente.
+  const GENRES = [
+    { label: 'MPB', color: '#2f6a52' },
+    { label: 'Hip-Hop', color: '#4e3c72' },
+    { label: 'Funk', color: '#6f3340' },
+    { label: 'Trap', color: '#33406e' },
+    { label: 'Rock', color: '#6d2f2f' },
+    { label: 'Sertanejo', color: '#6b5230' },
+    { label: 'Pagode', color: '#2f5a6b' },
+    { label: 'Eletrônica', color: '#553a6b' },
+  ];
+
+  function renderGenreGridInto(containerId) {
+    const grid = document.getElementById(containerId);
+    grid.innerHTML = '';
+    GENRES.forEach((genre) => {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'tpl-genre-card';
+      card.style.background = genre.color;
+      card.innerHTML = `<span class="tpl-genre-dot"></span><span class="tpl-genre-label">${escapeHtml(genre.label)}</span>`;
+      card.addEventListener('click', () => {
+        goToTab('search');
+        document.querySelectorAll('.js-search-input').forEach((el) => (el.value = genre.label));
+        searchFor(genre.label);
+      });
+      grid.appendChild(card);
+    });
+  }
+
+  function renderGenres() {
+    renderGenreGridInto('genre-grid');
+    renderGenreGridInto('genre-grid-full');
+  }
+
+  function setSearchIdle(isIdle) {
+    isSearchIdle = isIdle;
+    updateQuickAccessVisibility();
+  }
+
+  document.querySelectorAll('.js-search-input').forEach((input) => {
+    input.addEventListener('input', (e) => {
+      document.querySelectorAll('.js-search-input').forEach((other) => {
+        if (other !== e.target) other.value = e.target.value;
+      });
+      if (!e.target.value.trim()) {
+        setSearchIdle(true);
+        document.getElementById('search-results').innerHTML = '';
+      }
+    });
+  });
+
+  // ---------- Busca ----------
+  async function searchFor(q) {
+    setSearchIdle(false);
+    const resultsEl = document.getElementById('search-results');
+    resultsEl.innerHTML = '<li>Buscando...</li>';
+
+    try {
+      const tracks = await api(`/search?q=${encodeURIComponent(q)}`);
+      resultsEl.innerHTML = '';
+      if (!tracks.length) {
+        resultsEl.innerHTML = '<li>Nenhum resultado encontrado.</li>';
+        return;
+      }
+      tracks.forEach((track) => {
+        resultsEl.appendChild(
+          trackRow(track, {
+            onPlayNow: (t) => enqueueTrack(t, true),
+            onAddQueue: (t) => enqueueTrack(t, false),
+            onAddPlaylist: (t) => openAddToPlaylistModal(t),
+          })
+        );
+      });
+    } catch (err) {
+      resultsEl.innerHTML = `<li>Erro: ${escapeHtml(err.message)}</li>`;
+    }
+  }
+
+  ['search-form', 'search-form-desktop'].forEach((formId) => {
+    document.getElementById(formId).addEventListener('submit', (e) => {
+      e.preventDefault();
+      const q = e.target.querySelector('.js-search-input').value.trim();
+      if (!q) return;
+      goToTab('search');
+      searchFor(q);
+    });
+  });
+
+  async function enqueueTrack(track, playNext) {
+    const guildId = requireGuild();
+    if (!guildId) return;
+    try {
+      await api('/queue', { method: 'POST', body: JSON.stringify({ guildId, track, playNext }) });
+      showToast(playNext ? `Tocando a seguir: ${track.name}` : `Adicionado à fila: ${track.name}`);
+      refreshStatus();
+    } catch (err) {
+      alert(`Erro ao adicionar à fila: ${err.message}`);
+    }
+  }
+
+  // ---------- Fila ----------
+  // Linha de tabela reutilizada pela fila (aba Fila e previa na tela inicial)
+  function buildQueueRow(track, index, { onRemove, onPlayNow, playNowTitle = 'Tocar agora' } = {}) {
+    const row = document.createElement('div');
+    row.className = 'tpl-track-row';
+    const durationSec = track.durationMs ? track.durationMs / 1000 : null;
+    const artistText = escapeHtml((track.artists || []).join(', '));
+    const durationText = durationSec ? formatTime(durationSec) : '';
+    const metaText = durationText ? `${artistText} · ${durationText}` : artistText;
+    // Estrutura serve os dois layouts do template: no mobile so o bloco
+    // "main" (arte+titulo+meta) aparece; no PC vira uma linha de tabela com
+    // indice/artista/tempo em colunas proprias (CSS troca o que fica visivel).
+    row.innerHTML = `
+      <div class="tpl-track-index">${index + 1}</div>
+      <div class="tpl-track-main">
+        ${mediaArtHtml(track.name, track.albumArt, 'tpl-track-art')}
+        <div class="tpl-track-main-text">
+          <div class="tpl-track-title">${escapeHtml(track.name)}</div>
+          <div class="tpl-track-meta-mobile">${metaText}</div>
+        </div>
+      </div>
+      <div class="tpl-track-artist-cell">${artistText}</div>
+      <div class="tpl-track-time-cell">${durationText}</div>
+      <div class="tpl-track-actions"></div>
+    `;
+    const actions = row.lastElementChild;
+    if (onPlayNow) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tpl-track-action-btn tpl-track-action-btn--play';
+      btn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4.5l12 7.5-12 7.5z" fill="currentColor"/></svg>';
+      btn.title = playNowTitle;
+      btn.addEventListener('click', () => onPlayNow());
+      actions.appendChild(btn);
+    }
+    if (onRemove) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tpl-track-action-btn';
+      btn.innerHTML = ICONS.remove;
+      btn.title = 'Remover';
+      btn.addEventListener('click', () => onRemove());
+      actions.appendChild(btn);
+    }
+    return row;
+  }
+
+  async function renderQueue(status) {
+    try {
+      if (!status) {
+        const guildId = settings.currentGuildId;
+        if (!guildId) return;
+        status = await api(`/status?guildId=${encodeURIComponent(guildId)}`);
+        applyStatus(status);
+      }
+
+      document.getElementById('queue-count-badge').textContent = status.queue.length
+        ? `${status.queue.length} faixas`
+        : '';
+
+      const tbody = document.getElementById('queue-tbody');
+      tbody.innerHTML = '';
+      status.queue.forEach((track, index) => {
+        const row = buildQueueRow(track, index, { onRemove: () => removeFromQueue(index), onPlayNow: () => playQueueItemNow(index) });
+        row.draggable = true;
+        row.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', String(index));
+        });
+        row.addEventListener('dragover', (e) => e.preventDefault());
+        row.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          const from = Number(e.dataTransfer.getData('text/plain'));
+          if (from === index) return;
+          const guildId = requireGuild();
+          if (!guildId) return;
+          try {
+            await api('/queue/reorder', { method: 'POST', body: JSON.stringify({ guildId, from, to: index }) });
+            renderQueue();
+          } catch (err) {
+            alert(`Erro ao reordenar: ${err.message}`);
+          }
+        });
+        tbody.appendChild(row);
+      });
+    } catch (err) {
+      console.error('Erro ao carregar fila:', err.message);
+    }
+  }
+
+  async function removeFromQueue(index) {
+    const guildId = requireGuild();
+    if (!guildId) return;
+    try {
+      await api(`/queue/${index}?guildId=${encodeURIComponent(guildId)}`, { method: 'DELETE' });
+      renderQueue();
+    } catch (err) {
+      alert(`Erro ao remover: ${err.message}`);
+    }
+  }
+
+  // Traz uma faixa da fila pra frente e pula pra ela (reusa o /skip, que ja
+  // tem a regra de permissao: so quem adicionou ou um admin pode pular).
+  async function playQueueItemNow(index) {
+    const guildId = requireGuild();
+    if (!guildId) return;
+    try {
+      if (index !== 0) {
+        await api('/queue/reorder', { method: 'POST', body: JSON.stringify({ guildId, from: index, to: 0 }) });
+      }
+      await api('/skip', { method: 'POST', body: JSON.stringify({ guildId }) });
+      refreshStatus();
+    } catch (err) {
+      alert(`Erro ao tocar: ${err.message}`);
+    }
+  }
+
+  // ---------- Playlists ----------
+  const playlistsRoot = document.getElementById('playlists-root');
+  const playlistDetail = document.getElementById('playlist-detail');
+  const playlistCreateScreen = document.getElementById('playlist-create');
+
+  function resetCreatePlaylistForm() {
+    document.getElementById('new-playlist-name').value = '';
+    document.querySelectorAll('#new-playlist-visibility-group .pl-visibility-btn').forEach((b) => b.classList.remove('active'));
+    const defaultBtn = document.querySelector('#new-playlist-visibility-group .pl-visibility-btn[data-value="private"]');
+    defaultBtn.classList.add('active');
+    document.getElementById('new-playlist-visibility').value = 'private';
+    document.getElementById('new-playlist-hint').textContent = NEW_PLAYLIST_VISIBILITY_HINT.private;
+    document.getElementById('create-playlist-visibility-label').textContent = 'Playlist privada';
+  }
+
+  function openCreatePlaylistScreen() {
+    if (!currentUser) {
+      alert('Entre com Discord primeiro (ícone de configurações ⚙).');
+      return;
+    }
+    resetCreatePlaylistForm();
+    playlistsRoot.classList.add('hidden');
+    playlistCreateScreen.classList.remove('hidden');
+    document.getElementById('new-playlist-name').focus();
+  }
+
+  function closeCreatePlaylistScreen() {
+    playlistCreateScreen.classList.add('hidden');
+    playlistsRoot.classList.remove('hidden');
+  }
+
+  document.getElementById('open-create-playlist-btn').addEventListener('click', openCreatePlaylistScreen);
+  document.getElementById('playlist-create-back-btn').addEventListener('click', closeCreatePlaylistScreen);
+
+  const NEW_PLAYLIST_VISIBILITY_HINT = {
+    private: 'Só você pode ver.',
+    server: 'Quem está no seu servidor pode ver.',
+    public: 'Qualquer pessoa com o link pode ver.',
+  };
+  const NEW_PLAYLIST_VISIBILITY_HERO_LABEL = {
+    private: 'Playlist privada',
+    server: 'Playlist do servidor',
+    public: 'Playlist pública',
+  };
+  document.querySelectorAll('#new-playlist-visibility-group .pl-visibility-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#new-playlist-visibility-group .pl-visibility-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('new-playlist-visibility').value = btn.dataset.value;
+      document.getElementById('new-playlist-hint').textContent = NEW_PLAYLIST_VISIBILITY_HINT[btn.dataset.value];
+      document.getElementById('create-playlist-visibility-label').textContent = NEW_PLAYLIST_VISIBILITY_HERO_LABEL[btn.dataset.value];
+    });
+  });
+
+  let playlistVisibilityFilter = 'all';
+  let lastFetchedPlaylists = null;
+  document.querySelectorAll('#playlists-filter-group .pl-filter-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#playlists-filter-group .pl-filter-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      playlistVisibilityFilter = btn.dataset.filter;
+      if (lastFetchedPlaylists) renderPlaylistSections(lastFetchedPlaylists);
+    });
+  });
+
+  document.getElementById('new-playlist-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('new-playlist-name');
+    const visibilitySelect = document.getElementById('new-playlist-visibility');
+    const name = input.value.trim();
+    if (!name) return;
+
+    if (!currentUser) {
+      alert('Entre com Discord primeiro (ícone de configurações ⚙).');
+      return;
+    }
+    const visibility = visibilitySelect.value;
+    const guildId = visibility === 'private' ? undefined : requireGuild();
+    if (visibility !== 'private' && !guildId) return;
+
+    try {
+      const playlist = await api('/playlists', { method: 'POST', body: JSON.stringify({ name, visibility, guildId }) });
+      playlistCreateScreen.classList.add('hidden');
+      showToast(`Playlist "${playlist.name}" criada`);
+      openPlaylistDetail(playlist.id);
+    } catch (err) {
+      alert(`Erro ao criar playlist: ${err.message}`);
+    }
+  });
+
+  // ---------- Importar playlist (Spotify ou YouTube/YouTube Music) ----------
+  const importPlaylistModal = document.getElementById('import-playlist-modal');
+  const IMPORT_PLATFORM_LABELS = {
+    spotify: { title: 'Importar do Spotify', placeholder: 'https://open.spotify.com/playlist/...' },
+    youtube: { title: 'Importar do YouTube Music', placeholder: 'https://music.youtube.com/playlist?list=...' },
+  };
+  let importPlatform = 'spotify';
+
+  ['import-spotify-btn', 'import-youtube-btn'].forEach((btnId) => {
+    document.getElementById(btnId).addEventListener('click', (e) => {
+      if (!currentUser) {
+        alert('Entre com Discord primeiro (ícone de configurações ⚙).');
+        return;
+      }
+      importPlatform = e.currentTarget.dataset.platform;
+      const labels = IMPORT_PLATFORM_LABELS[importPlatform];
+      document.getElementById('import-playlist-title').textContent = labels.title;
+      document.getElementById('import-playlist-url').placeholder = labels.placeholder;
+      document.getElementById('import-playlist-url').value = '';
+      importPlaylistModal.classList.remove('hidden');
+    });
+  });
+
+  document.getElementById('import-playlist-close-btn').addEventListener('click', () => {
+    importPlaylistModal.classList.add('hidden');
+  });
+
+  document.getElementById('import-playlist-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const url = document.getElementById('import-playlist-url').value.trim();
+    if (!url) return;
+
+    const visibility = document.getElementById('import-playlist-visibility').value;
+    const guildId = visibility === 'private' ? undefined : requireGuild();
+    if (visibility !== 'private' && !guildId) return;
+
+    const submitBtn = document.getElementById('import-playlist-submit-btn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Importando...';
+    try {
+      const playlist = await api(`/playlists/import-${importPlatform}`, {
+        method: 'POST',
+        body: JSON.stringify({ url, visibility, guildId }),
+      });
+      importPlaylistModal.classList.add('hidden');
+      playlistCreateScreen.classList.add('hidden');
+      showToast(`Playlist "${playlist.name}" importada (${playlist.tracks.length} faixas)`);
+      openPlaylistDetail(playlist.id);
+    } catch (err) {
+      alert(`Erro ao importar playlist: ${err.message}`);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Importar';
+    }
+  });
+
+  async function playPlaylist(pl) {
+    const guildId = requireGuild();
+    if (!guildId) return;
+    try {
+      await api(`/playlists/${pl.id}/play`, { method: 'POST', body: JSON.stringify({ guildId }) });
+      refreshStatus();
+    } catch (err) {
+      alert(`Erro ao tocar playlist: ${err.message}`);
+    }
+  }
+
+  function buildPlaylistGridCard(pl) {
+    const card = document.createElement('div');
+    card.className = 'pl-card';
+    const isOwner = pl.ownerId === currentUser.id;
+    const isFavorited = (pl.favoritedBy || []).includes(currentUser.id);
+    const ownerNote = !isOwner ? ` · de ${escapeHtml(pl.ownerName)}` : '';
+    const badgeIcon = ICONS[VISIBILITY_BADGE_ICON[pl.visibility]] || '';
+    card.innerHTML = `
+      ${mediaArtHtml(pl.name, pl.tracks[0]?.albumArt || '', 'pl-card-art')}
+      <div class="pl-card-body">
+        <div class="pl-card-name">${escapeHtml(pl.name)}</div>
+        <div class="pl-card-meta">
+          <span>${pl.tracks.length} música${pl.tracks.length === 1 ? '' : 's'}${ownerNote}</span>
+          <span class="pl-badge pl-badge--${pl.visibility}">${badgeIcon}${VISIBILITY_BADGE_LABEL[pl.visibility] || ''}</span>
+        </div>
+      </div>
+      <div class="pl-card-actions"></div>
+    `;
+    const actions = card.querySelector('.pl-card-actions');
+
+    const playBtn = document.createElement('button');
+    playBtn.type = 'button';
+    playBtn.className = 'pl-card-play-btn';
+    playBtn.title = 'Tocar';
+    playBtn.innerHTML = ICONS.play;
+    playBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      playPlaylist(pl);
+    });
+    actions.appendChild(playBtn);
+
+    if (!isOwner) {
+      const favBtn = document.createElement('button');
+      favBtn.type = 'button';
+      favBtn.className = `playlist-favorite-btn${isFavorited ? ' active' : ''}`;
+      favBtn.title = isFavorited ? 'Remover dos favoritos' : 'Favoritar';
+      favBtn.innerHTML = isFavorited ? ICONS.heartFilled : ICONS.heartOutline;
+      favBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        try {
+          await api(`/playlists/${pl.id}/favorite`, { method: isFavorited ? 'DELETE' : 'POST' });
+          showToast(isFavorited ? 'Removida dos favoritos' : 'Adicionada às suas playlists');
+          renderPlaylists();
+        } catch (err) {
+          alert(`Erro ao favoritar: ${err.message}`);
+        }
+      });
+      actions.appendChild(favBtn);
+    } else {
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'playlist-favorite-btn';
+      removeBtn.title = 'Apagar playlist';
+      removeBtn.innerHTML = ICONS.trash;
+      removeBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!confirm(`Apagar a playlist "${pl.name}"? Essa ação não pode ser desfeita.`)) return;
+        try {
+          await api(`/playlists/${pl.id}`, { method: 'DELETE' });
+          showToast('Playlist apagada');
+          renderPlaylists();
+        } catch (err) {
+          alert(`Erro ao apagar playlist: ${err.message}`);
+        }
+      });
+      actions.appendChild(removeBtn);
+    }
+    card.addEventListener('click', () => openPlaylistDetail(pl.id));
+    return card;
+  }
+
+  function renderPlaylistSections(playlists) {
+    const list = document.getElementById('playlists-list');
+    list.innerHTML = '';
+    const totalTracks = playlists.reduce((sum, pl) => sum + pl.tracks.length, 0);
+    document.getElementById('playlists-page-subtitle').textContent =
+      `${playlists.length} playlist${playlists.length === 1 ? '' : 's'} · ${totalTracks} faixa${totalTracks === 1 ? '' : 's'} no total`;
+    if (!playlists.length) {
+      list.innerHTML = '<p class="playlist-empty-note">Nenhuma playlist ainda.</p>';
+      return;
+    }
+    const groups = categorizePlaylistsForUser(playlists);
+    let anyRendered = false;
+    PLAYLIST_CATEGORIES.forEach(({ key, label }) => {
+      const items = groups[key].filter(
+        (pl) => playlistVisibilityFilter === 'all' || pl.visibility === playlistVisibilityFilter
+      );
+      if (!items.length) return;
+      anyRendered = true;
+      const section = document.createElement('div');
+      section.className = 'playlist-category';
+      section.innerHTML = `
+        <div class="playlist-category-header">
+          <h2 class="playlist-category-heading">${label}</h2>
+          <span class="playlist-category-count">${items.length}</span>
+        </div>
+      `;
+      const grid = document.createElement('div');
+      grid.className = 'playlist-grid';
+      items.forEach((pl) => grid.appendChild(buildPlaylistGridCard(pl)));
+      section.appendChild(grid);
+      list.appendChild(section);
+    });
+    if (!anyRendered) {
+      list.innerHTML = '<p class="playlist-empty-note">Nenhuma playlist com esse filtro.</p>';
+    }
+  }
+
+  async function renderPlaylists() {
+    renderQuickAccess();
+    const list = document.getElementById('playlists-list');
+    if (!currentUser) {
+      document.getElementById('playlists-page-subtitle').textContent = '';
+      list.innerHTML = '<p class="playlist-empty-note">Entre com Discord (ícone ⚙) para ver suas playlists.</p>';
+      return;
+    }
+    const playlists = await api('/playlists');
+    lastFetchedPlaylists = playlists;
+    renderPlaylistSections(playlists);
+  }
+
+  const PLAYLIST_VISIBILITY_LABELS = {
+    private: 'Playlist privada',
+    server: 'Playlist do servidor',
+    public: 'Playlist pública',
+  };
+
+  async function openPlaylistDetail(id) {
+    const pl = await api(`/playlists/${id}`);
+    playlistsRoot.classList.add('hidden');
+    playlistDetail.classList.remove('hidden');
+
+    document.getElementById('playlist-detail-visibility').textContent = PLAYLIST_VISIBILITY_LABELS[pl.visibility] || '';
+    document.getElementById('playlist-detail-name').textContent = pl.name;
+
+    const totalMinutes = Math.round(pl.tracks.reduce((sum, t) => sum + (t.durationMs || 0), 0) / 60000);
+    document.getElementById('playlist-detail-meta').textContent = [
+      pl.ownerName,
+      `${pl.tracks.length} música${pl.tracks.length === 1 ? '' : 's'}`,
+      totalMinutes ? `${totalMinutes} min` : null,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+
+    // Capa: colagem 2x2 das primeiras faixas com capa (como o Spotify monta
+    // pra playlist sem imagem propria), ou um placeholder se nao tiver nenhuma.
+    const coverEl = document.getElementById('playlist-hero-cover');
+    const artUrls = pl.tracks.map((t) => t.albumArt).filter(Boolean).slice(0, 4);
+    if (artUrls.length >= 4) {
+      coverEl.innerHTML = `<div class="pl-hero-cover-grid">${artUrls.map((url) => `<img src="${url}" alt="" />`).join('')}</div>`;
+    } else if (artUrls.length > 0) {
+      coverEl.innerHTML = `<img src="${artUrls[0]}" alt="" />`;
+    } else {
+      const [fromColor, toColor] = PLACEHOLDER_GRADIENTS[hashStr(pl.name) % PLACEHOLDER_GRADIENTS.length];
+      const letter = escapeHtml((pl.name || '?').trim().charAt(0).toUpperCase() || '?');
+      coverEl.innerHTML = `<div class="pl-hero-cover-placeholder" style="background: linear-gradient(140deg, ${fromColor}, ${toColor});"><span>${letter}</span></div>`;
+    }
+
+    // Fundo do cabecalho: gradiente derivado do nome (mesma tecnica dos
+    // placeholders de capa), pra cada playlist ter uma cor propria.
+    const [gradFrom, gradTo] = PLACEHOLDER_GRADIENTS[hashStr(pl.name) % PLACEHOLDER_GRADIENTS.length];
+    document.getElementById('playlist-hero-bg').style.background = `linear-gradient(160deg, ${gradFrom}, ${gradTo} 65%, var(--bg-panel) 100%)`;
+
+    const canEdit = currentUser && pl.ownerId === currentUser.id;
+
+    const tracksList = document.getElementById('playlist-detail-tracks');
+    tracksList.innerHTML = '';
+    pl.tracks.forEach((track, index) => {
+      tracksList.appendChild(
+        buildQueueRow(track, index, {
+          onPlayNow: () => enqueueTrack(track, false),
+          playNowTitle: 'Adicionar à fila',
+          onRemove: canEdit
+            ? async () => {
+                await api(`/playlists/${id}/tracks/${index}`, { method: 'DELETE' });
+                openPlaylistDetail(id);
+              }
+            : undefined,
+        })
+      );
+    });
+
+    document.getElementById('playlist-play-all-btn').onclick = () => playPlaylist(pl);
+
+    const favBtn = document.getElementById('playlist-detail-favorite-btn');
+    favBtn.classList.toggle('hidden', canEdit);
+    if (!canEdit) {
+      const isFavorited = (pl.favoritedBy || []).includes(currentUser?.id);
+      favBtn.innerHTML = isFavorited ? ICONS.heartFilled : ICONS.heartOutline;
+      favBtn.title = isFavorited ? 'Remover dos favoritos' : 'Favoritar';
+      favBtn.classList.toggle('active', isFavorited);
+      favBtn.onclick = async () => {
+        try {
+          await api(`/playlists/${id}/favorite`, { method: isFavorited ? 'DELETE' : 'POST' });
+          showToast(isFavorited ? 'Removida dos favoritos' : 'Adicionada às suas playlists');
+          openPlaylistDetail(id);
+        } catch (err) {
+          alert(`Erro ao favoritar: ${err.message}`);
+        }
+      };
+    }
+
+    const deleteBtn = document.getElementById('playlist-detail-delete-btn');
+    deleteBtn.classList.toggle('hidden', !canEdit);
+    if (canEdit) {
+      deleteBtn.innerHTML = ICONS.remove;
+      deleteBtn.onclick = async () => {
+        if (!confirm(`Apagar a playlist "${pl.name}"? Essa ação não pode ser desfeita.`)) return;
+        try {
+          await api(`/playlists/${id}`, { method: 'DELETE' });
+          showToast('Playlist apagada');
+          document.getElementById('playlist-back-btn').click();
+        } catch (err) {
+          alert(`Erro ao apagar playlist: ${err.message}`);
+        }
+      };
+    }
+  }
+
+  document.getElementById('playlist-back-btn').addEventListener('click', () => {
+    playlistDetail.classList.add('hidden');
+    playlistsRoot.classList.remove('hidden');
+    renderPlaylists();
+  });
+
+  // ---------- Modal: adicionar a playlist ----------
+  const addToPlaylistModal = document.getElementById('add-to-playlist-modal');
+  document.getElementById('modal-close-btn').addEventListener('click', () => {
+    addToPlaylistModal.classList.add('hidden');
+  });
+
+  async function openAddToPlaylistModal(track) {
+    if (!currentUser) {
+      alert('Entre com Discord primeiro (ícone de configurações ⚙).');
+      return;
+    }
+    const optionsList = document.getElementById('modal-playlist-options');
+    optionsList.innerHTML = '<li>Carregando...</li>';
+    addToPlaylistModal.classList.remove('hidden');
+
+    const playlists = (await api('/playlists')).filter((pl) => pl.ownerId === currentUser.id);
+    optionsList.innerHTML = '';
+    if (!playlists.length) {
+      optionsList.innerHTML = '<li>Você ainda não tem playlists suas.</li>';
+      return;
+    }
+    playlists.forEach((pl) => {
+      const li = document.createElement('li');
+      li.className = 'playlist-item';
+      li.style.cursor = 'pointer';
+      li.textContent = pl.name;
+      li.addEventListener('click', async () => {
+        await api(`/playlists/${pl.id}/tracks`, { method: 'POST', body: JSON.stringify({ track }) });
+        showToast(`Adicionado à playlist "${pl.name}"`);
+        addToPlaylistModal.classList.add('hidden');
+      });
+      optionsList.appendChild(li);
+    });
+  }
+
+  // ---------- Barra do player ----------
+  // O template tem duas barras bem diferentes (mini-bar de 3 botoes no
+  // celular, barra completa com shuffle/anterior/repeat/volume no PC) -
+  // em vez de tentar unificar tudo numa marcacao so, cada uma tem seu proprio
+  // HTML e as duas sao sincronizadas via classes .js-* compartilhadas.
+  const playPauseBtns = () => document.querySelectorAll('.js-playpause');
+  const skipBtns = () => document.querySelectorAll('.js-skip');
+  const progressEls = () => document.querySelectorAll('.js-progress');
+  const volumeEls = () => document.querySelectorAll('.js-volume');
+  const artEls = () => document.querySelectorAll('.js-art');
+  const artBgEls = () => document.querySelectorAll('.js-art-bg');
+  const nameEls = () => document.querySelectorAll('.js-track-name');
+  const artistEls = () => document.querySelectorAll('.js-track-artist');
+
+  // Inputs "range" nativos nao tem preenchimento colorido nativo entre 0 e o
+  // valor atual - pintamos via gradiente de fundo (barra do PC/volume) ou via
+  // variavel CSS lida pelo pseudo-elemento da trilha (linha fina do celular).
+  function paintRange(input, color) {
+    const min = Number(input.min) || 0;
+    const max = Number(input.max) || 100;
+    const pct = max > min ? ((Number(input.value) - min) / (max - min)) * 100 : 0;
+    input.style.background = `linear-gradient(to right, ${color} 0%, ${color} ${pct}%, var(--border-soft) ${pct}%, var(--border-soft) 100%)`;
+  }
+
+  function paintProgress(input) {
+    const min = Number(input.min) || 0;
+    const max = Number(input.max) || 100;
+    const pct = max > min ? ((Number(input.value) - min) / (max - min)) * 100 : 0;
+    input.style.background = `linear-gradient(to right, var(--accent) 0%, var(--accent) ${pct}%, var(--border-soft) ${pct}%, var(--border-soft) 100%)`;
+  }
+
+  let isDraggingProgress = false;
+  let isPausedLocally = true;
+  let currentPlayingTrack = null;
+
+  function setPlayPauseIcon(paused) {
+    playPauseBtns().forEach((btn) => {
+      btn.querySelector('.icon-play').style.display = paused ? '' : 'none';
+      btn.querySelector('.icon-pause').style.display = paused ? 'none' : '';
+    });
+  }
+
+  playPauseBtns().forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const guildId = requireGuild();
+      if (!guildId) return;
+      if (isPausedLocally) {
+        await api('/resume', { method: 'POST', body: JSON.stringify({ guildId }) });
+      } else {
+        await api('/pause', { method: 'POST', body: JSON.stringify({ guildId }) });
+      }
+      refreshStatus();
+    });
+  });
+
+  skipBtns().forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const guildId = requireGuild();
+      if (!guildId) return;
+      try {
+        await api('/skip', { method: 'POST', body: JSON.stringify({ guildId }) });
+        refreshStatus();
+      } catch (err) {
+        alert(`Erro ao pular: ${err.message}`);
+      }
+    });
+  });
+
+  // Pointer Events unificam mouse/touch/caneta e disparam de forma confiavel
+  // no mobile. Usar apenas "change" (como antes) podia travar a barra: se o
+  // usuario tocasse sem realmente mover o valor, o "change" as vezes nao
+  // disparava e a barra ficava presa em modo "arrastando" para sempre.
+  progressEls().forEach((progressEl) => {
+    progressEl.addEventListener('pointerdown', () => {
+      isDraggingProgress = true;
+    });
+
+    progressEl.addEventListener('input', () => {
+      paintProgress(progressEl);
+    });
+
+    progressEl.addEventListener('pointerup', async () => {
+      const seconds = Number(progressEl.value);
+      isDraggingProgress = false;
+      const guildId = requireGuild();
+      if (!guildId) return;
+      await api('/seek', { method: 'POST', body: JSON.stringify({ guildId, seconds }) });
+      refreshStatus();
+    });
+  });
+
+  volumeEls().forEach((volumeEl) => {
+    volumeEl.addEventListener('input', async () => {
+      paintRange(volumeEl, 'var(--text-bright)');
+      document.querySelectorAll('.js-volume-pct').forEach((el) => {
+        el.textContent = `${Math.round(Number(volumeEl.value) * 100)}%`;
+      });
+      volumeEls().forEach((other) => {
+        if (other !== volumeEl) other.value = volumeEl.value;
+      });
+      const guildId = settings.currentGuildId;
+      if (!guildId) return;
+      await api('/volume', { method: 'POST', body: JSON.stringify({ guildId, volume: Number(volumeEl.value) }) });
+    });
+  });
+
+  // Botao de volume da mini-barra do celular - abre uma barra vertical (ao
+  // lado do botao de autoplay) que some sozinha depois de 4s sem uso, ou na
+  // hora se o usuario clicar no botao de novo.
+  const volumeBtnEl = document.getElementById('bottom-bar-volume-btn');
+  const volumePopoverEl = document.getElementById('bottom-bar-volume-popover');
+  let volumeHideTimer = null;
+
+  function setVolumeBtnIcon(muted) {
+    volumeBtnEl.querySelector('.icon-vol-on').style.display = muted ? 'none' : '';
+    volumeBtnEl.querySelector('.icon-vol-off').style.display = muted ? '' : 'none';
+  }
+
+  function scheduleVolumePopoverHide() {
+    clearTimeout(volumeHideTimer);
+    volumeHideTimer = setTimeout(() => volumePopoverEl.classList.add('hidden'), 4000);
+  }
+
+  volumeBtnEl.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (volumePopoverEl.classList.contains('hidden')) {
+      volumePopoverEl.classList.remove('hidden');
+      scheduleVolumePopoverHide();
+    } else {
+      volumePopoverEl.classList.add('hidden');
+      clearTimeout(volumeHideTimer);
+    }
+  });
+
+  volumePopoverEl.addEventListener('click', (e) => e.stopPropagation());
+  const bottomBarVolumeRangeEl = volumePopoverEl.querySelector('.js-volume');
+  bottomBarVolumeRangeEl.addEventListener('pointerdown', () => clearTimeout(volumeHideTimer));
+  bottomBarVolumeRangeEl.addEventListener('input', () => setVolumeBtnIcon(Number(bottomBarVolumeRangeEl.value) === 0));
+  bottomBarVolumeRangeEl.addEventListener('pointerup', scheduleVolumePopoverHide);
+
+  document.addEventListener('click', (e) => {
+    if (volumePopoverEl.classList.contains('hidden')) return;
+    if (volumePopoverEl.contains(e.target) || volumeBtnEl.contains(e.target)) return;
+    volumePopoverEl.classList.add('hidden');
+    clearTimeout(volumeHideTimer);
+  });
+
+  const autoplayToggleEls = () => document.querySelectorAll('.js-autoplay-toggle');
+  const repeatBtnEls = () => document.querySelectorAll('.js-repeat-btn');
+
+  async function setAutoplay(enabled) {
+    const guildId = requireGuild();
+    if (!guildId) return;
+    await api('/autoplay', { method: 'POST', body: JSON.stringify({ guildId, enabled }) });
+  }
+
+  autoplayToggleEls().forEach((el) => {
+    el.addEventListener('change', () => setAutoplay(el.checked));
+  });
+  repeatBtnEls().forEach((btn) => {
+    btn.addEventListener('click', () => setAutoplay(!btn.classList.contains('active')));
+  });
+
+  document.getElementById('player-like-btn').addEventListener('click', () => {
+    if (!currentPlayingTrack) {
+      alert('Nada tocando agora.');
+      return;
+    }
+    openAddToPlaylistModal(currentPlayingTrack);
+  });
+
+  // Estado usado para animar a barra de progresso de forma suave entre uma
+  // atualizacao de status e outra (o polling so acontece 1x por segundo,
+  // o que sozinho deixaria a barra "pulando" em vez de correr continuamente).
+  let localElapsedBase = 0;
+  let localSyncedAt = 0;
+  let localDuration = 0;
+  let localIsPlaying = false;
+
+  function applyStatus(status) {
+    if (status.current) {
+      const t = status.current.track;
+      currentPlayingTrack = t;
+      nameEls().forEach((el) => (el.textContent = t.name));
+      artistEls().forEach((el) => (el.textContent = (t.artists || []).join(', ')));
+      artEls().forEach((el) => {
+        if (t.albumArt) {
+          el.src = t.albumArt;
+          el.style.display = '';
+        } else {
+          el.removeAttribute('src');
+          el.style.display = 'none';
+        }
+      });
+      artBgEls().forEach((el) => {
+        el.style.backgroundImage = t.albumArt ? `url("${t.albumArt}")` : 'none';
+      });
+      isPausedLocally = status.current.paused;
+      setPlayPauseIcon(isPausedLocally);
+
+      const duration = status.current.durationSeconds || 0;
+      localElapsedBase = status.current.elapsedSeconds || 0;
+      localSyncedAt = Date.now();
+      localDuration = duration;
+      localIsPlaying = !isPausedLocally;
+
+      if (!isDraggingProgress) {
+        progressEls().forEach((el) => {
+          el.disabled = false;
+          el.max = duration || 0;
+          el.value = localElapsedBase;
+          paintProgress(el);
+        });
+      }
+      document.querySelectorAll('.js-elapsed').forEach((el) => (el.textContent = formatTime(localElapsedBase)));
+      document.querySelectorAll('.js-duration').forEach((el) => (el.textContent = formatTime(duration)));
+      document.querySelectorAll('.js-remaining').forEach((el) => (el.textContent = formatRemaining(localElapsedBase, duration)));
+      document.getElementById('now-playing-block').classList.remove('hidden');
+      document.getElementById('now-playing-time-text').textContent = `${formatTime(localElapsedBase)} / ${formatTime(duration)}`;
+    } else {
+      currentPlayingTrack = null;
+      nameEls().forEach((el) => (el.textContent = 'Nada tocando'));
+      artistEls().forEach((el) => (el.textContent = ''));
+      artEls().forEach((el) => {
+        el.removeAttribute('src');
+        el.style.display = 'none';
+      });
+      artBgEls().forEach((el) => {
+        el.style.backgroundImage = 'none';
+      });
+      setPlayPauseIcon(true);
+      if (!isDraggingProgress) {
+        progressEls().forEach((el) => {
+          el.disabled = true;
+          el.max = 0;
+          el.value = 0;
+          paintProgress(el);
+        });
+      }
+      document.querySelectorAll('.js-elapsed').forEach((el) => (el.textContent = '0:00'));
+      document.querySelectorAll('.js-duration').forEach((el) => (el.textContent = '0:00'));
+      document.querySelectorAll('.js-remaining').forEach((el) => (el.textContent = '0:00'));
+      document.getElementById('now-playing-block').classList.add('hidden');
+      isPausedLocally = true;
+      localIsPlaying = false;
+      localDuration = 0;
+    }
+
+    volumeEls().forEach((el) => {
+      el.value = status.volume;
+      paintRange(el, 'var(--text-bright)');
+    });
+    document.querySelectorAll('.js-volume-pct').forEach((el) => {
+      el.textContent = `${Math.round(status.volume * 100)}%`;
+    });
+    setVolumeBtnIcon(status.volume === 0);
+    autoplayToggleEls().forEach((el) => {
+      if (document.activeElement !== el) el.checked = status.autoplay;
+    });
+    repeatBtnEls().forEach((el) => el.classList.toggle('active', status.autoplay));
+
+    renderHomeQueuePreview(status.queue);
+    renderNextUp(status.current ? status.queue[0] : null, status.queue);
+  }
+
+  // ---------- Prévia da próxima faixa, acima da barra do player (PC e mobile) ----------
+  // Clicar nela expande e mostra o resto da fila (ver wiring mais abaixo).
+  let lastQueueSnapshot = [];
+
+  function buildNextUpExpandRow(track) {
+    const row = document.createElement('div');
+    row.className = 'next-up-expand-row';
+    row.innerHTML = `
+      ${mediaArtHtml(track.name, track.albumArt, 'next-up-expand-art')}
+      <div class="next-up-expand-text">
+        <span class="next-up-expand-name">${escapeHtml(track.name)}</span>
+        <span class="next-up-expand-artist">${escapeHtml((track.artists || []).join(', '))}</span>
+      </div>
+    `;
+    return row;
+  }
+
+  function populateExpandPanel(panel) {
+    const rest = lastQueueSnapshot.slice(1);
+    panel.innerHTML = '';
+    if (!rest.length) {
+      panel.innerHTML = '<div class="next-up-expand-empty">Nada mais na fila</div>';
+      return;
+    }
+    rest.forEach((t) => panel.appendChild(buildNextUpExpandRow(t)));
+  }
+
+  document.querySelectorAll('.js-next-up').forEach((stripEl) => {
+    stripEl.addEventListener('click', (e) => {
+      const panel = stripEl.querySelector('.js-next-up-expand');
+      if (!panel) return;
+      const willOpen = panel.classList.contains('hidden');
+      document.querySelectorAll('.js-next-up-expand').forEach((p) => p.classList.add('hidden'));
+      if (willOpen) {
+        populateExpandPanel(panel);
+        panel.classList.remove('hidden');
+      }
+      e.stopPropagation();
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('.js-next-up-expand:not(.hidden)').forEach((panel) => {
+      if (!panel.contains(e.target)) panel.classList.add('hidden');
+    });
+  });
+
+  function renderNextUp(track, queue) {
+    lastQueueSnapshot = queue || [];
+    document.querySelectorAll('.js-next-up').forEach((el) => el.classList.toggle('hidden', !track));
+    if (!track) return;
+    document.querySelectorAll('.js-next-up-name').forEach((el) => (el.textContent = track.name));
+    document.querySelectorAll('.js-next-up-artist').forEach((el) => (el.textContent = (track.artists || []).join(', ')));
+    document.querySelectorAll('.js-next-up-art-img').forEach((artImg) => {
+      if (track.albumArt) {
+        artImg.src = track.albumArt;
+        artImg.style.display = '';
+      } else {
+        artImg.removeAttribute('src');
+        artImg.style.display = 'none';
+      }
+    });
+    document.querySelectorAll('.js-next-up-expand:not(.hidden)').forEach(populateExpandPanel);
+    const extra = lastQueueSnapshot.length - 1;
+    const countEl = document.getElementById('bottom-bar-next-up-count');
+    if (countEl) countEl.textContent = extra > 0 ? `+${extra} na fila` : '';
+  }
+
+  // ---------- Espaço reservado no fim do conteúdo pra mini-barra do celular ----------
+  // A .bottom-bar e position:fixed e sua altura muda (aparece/some a prévia
+  // "A seguir"), entao um padding-bottom fixo no conteúdo sempre acaba
+  // ficando errado (curto demais, escondendo o fim das listas atrás da
+  // barra) ou exagerado. Mede a altura de verdade e mantém sincronizado.
+  const bottomBarForSpacing = document.querySelector('.bottom-bar');
+  if (window.ResizeObserver && bottomBarForSpacing) {
+    const syncBottomBarSpace = () => {
+      document.documentElement.style.setProperty('--bottom-bar-space', `${bottomBarForSpacing.getBoundingClientRect().height}px`);
+    };
+    new ResizeObserver(syncBottomBarSpace).observe(bottomBarForSpacing);
+    syncBottomBarSpace();
+  }
+
+  // ---------- Prévia da fila na tela inicial ----------
+  const homeQueueSectionEl = document.getElementById('home-queue-section');
+  const homeQueueTbodyEl = document.getElementById('home-queue-tbody');
+
+  function renderHomeQueuePreview(queue) {
+    homeQueueSectionEl.classList.toggle('hidden', !queue || queue.length === 0);
+    const badge = document.getElementById('home-queue-count-badge');
+    if (!queue || queue.length === 0) {
+      homeQueueTbodyEl.innerHTML = '';
+      badge.textContent = '';
+      return;
+    }
+    badge.textContent = `${queue.length} faixas`;
+    homeQueueTbodyEl.innerHTML = '';
+    queue.slice(0, 5).forEach((track, index) => {
+      homeQueueTbodyEl.appendChild(buildQueueRow(track, index, { onRemove: () => removeFromQueue(index) }));
+    });
+  }
+
+  document.getElementById('home-queue-clear-btn').addEventListener('click', async () => {
+    const guildId = requireGuild();
+    if (!guildId) return;
+    try {
+      await api(`/queue?guildId=${encodeURIComponent(guildId)}`, { method: 'DELETE' });
+      refreshStatus();
+    } catch (err) {
+      alert(`Erro ao limpar a fila: ${err.message}`);
+    }
+  });
+
+  async function refreshStatus() {
+    const guildId = settings.currentGuildId;
+    if (!currentUser || !guildId) return;
+    try {
+      const status = await api(`/status?guildId=${encodeURIComponent(guildId)}`);
+      applyStatus(status);
+
+      if (document.getElementById('tab-queue').classList.contains('active')) {
+        renderQueue(status);
+      }
+    } catch (err) {
+      console.error('Erro ao consultar status:', err.message);
+    }
+  }
+
+  // ---------- Loop de atualização ----------
+  // Poll completo (rede) 1x/s. Entre um poll e outro, a barra de progresso e
+  // animada localmente (sem rede) pra correr suave em vez de pular de 1 em 1s.
+  setInterval(refreshStatus, 1000);
+
+  setInterval(() => {
+    if (isDraggingProgress || !localIsPlaying || !localDuration) return;
+    const estimated = Math.min(localElapsedBase + (Date.now() - localSyncedAt) / 1000, localDuration);
+    progressEls().forEach((el) => {
+      el.value = estimated;
+      paintProgress(el);
+    });
+    document.querySelectorAll('.js-elapsed').forEach((el) => (el.textContent = formatTime(estimated)));
+    document.querySelectorAll('.js-remaining').forEach((el) => (el.textContent = formatRemaining(estimated, localDuration)));
+    document.getElementById('now-playing-time-text').textContent = `${formatTime(estimated)} / ${formatTime(localDuration)}`;
+  }, 250);
+
+  // ---------- Landing page: contador de servidores ----------
+  (async () => {
+    try {
+      const res = await fetch(`${settings.apiUrl}/api/public-stats`);
+      if (!res.ok) return;
+      const { guildCount } = await res.json();
+      if (guildCount > 0) {
+        document.getElementById('landing-guild-count').textContent = `Online em ${guildCount} servidor${guildCount === 1 ? '' : 'es'}`;
+      }
+    } catch {
+      // sem internet ou backend fora do ar - mantem o texto generico padrao
+    }
+  })();
+
+  // ---------- Tocando agora em tela cheia (PC e celular) ----------
+  const npFullscreenEl = document.getElementById('now-playing-fullscreen');
+  const fullscreenBtnEls = () => document.querySelectorAll('.js-fullscreen-btn');
+
+  // O mesmo botao vira "minimizar" enquanto a tela cheia esta ativa.
+  function setFullscreenBtnState(active) {
+    fullscreenBtnEls().forEach((btn) => {
+      btn.querySelector('.icon-fs-enter').style.display = active ? 'none' : '';
+      btn.querySelector('.icon-fs-exit').style.display = active ? '' : 'none';
+      btn.title = active ? 'Sair da tela cheia' : 'Tela cheia';
+    });
+  }
+
+  async function enterNowPlayingFullscreen() {
+    npFullscreenEl.classList.remove('hidden');
+    setFullscreenBtnState(true);
+    try {
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch {
+      // navegador recusou a tela cheia nativa (ex: dentro de um iframe) -
+      // continua mostrando so a visao em overlay, sem travar nada.
+    }
+  }
+
+  function exitNowPlayingFullscreen() {
+    npFullscreenEl.classList.add('hidden');
+    setFullscreenBtnState(false);
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+  }
+
+  function toggleNowPlayingFullscreen() {
+    if (npFullscreenEl.classList.contains('hidden')) {
+      enterNowPlayingFullscreen();
+    } else {
+      exitNowPlayingFullscreen();
+    }
+  }
+
+  fullscreenBtnEls().forEach((btn) => btn.addEventListener('click', toggleNowPlayingFullscreen));
+  document.getElementById('np-fullscreen-exit-btn').addEventListener('click', exitNowPlayingFullscreen);
+
+  // No celular nao tem espaco na mini-barra pra volume/autoplay/aleatorio/
+  // anterior - tocar em qualquer parte dela (fora dos botoes de play/pular)
+  // abre a tela cheia, que tem todos esses controles.
+  document.querySelector('.bottom-bar-track').addEventListener('click', (e) => {
+    if (e.target.closest('button')) return;
+    if (!currentPlayingTrack) return;
+    enterNowPlayingFullscreen();
+  });
+
+  // Se o usuario sair da tela cheia nativa (Esc, ou controle do proprio
+  // navegador) sem passar pelo nosso botao, esconde o overlay e volta o
+  // icone do botao tambem.
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement) {
+      npFullscreenEl.classList.add('hidden');
+      setFullscreenBtnState(false);
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !npFullscreenEl.classList.contains('hidden')) {
+      exitNowPlayingFullscreen();
+    }
+  });
+
+  // ---------- Inicialização ----------
+  renderGenres();
+  updateQuickAccessVisibility();
+  (async () => {
+    await refreshAccountUI();
+    renderPlaylists();
+    refreshStatus();
+  })();
+})();

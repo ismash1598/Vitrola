@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Vitrola</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23100f0d' stroke='%23e9d34a' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='5.5' fill='%23e9d34a'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Caprasimo&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Landing / login: aparece enquanto o usuario nao esta logado. Estrutura
+       copiada literalmente de "template html/Vitrola Login.html" (extraida
+       via outerHTML, em desktop e mobile - aqui e o MESMO DOM nos dois casos,
+       so o painel direito soma display:none e o grid vira 1 coluna). -->
+  <div id="landing-page">
+    <div class="landing2-left">
+      <div class="landing2-brand">
+        <div class="landing2-brand-mark"><span class="landing2-brand-mark-dot"></span></div>
+        <div class="landing2-brand-title">Vitrola</div>
+      </div>
+
+      <div class="landing2-intro">
+        <div class="landing2-badge">
+          <span class="landing2-badge-dot"></span>
+          <span id="landing-guild-count">Online no Discord</span>
+        </div>
+        <h1 class="landing2-h1">O bot de música do seu servidor Discord</h1>
+        <p class="landing2-sub">Busca, fila com autoplay e playlists — tocando direto no canal de voz. Entre com o Discord e comece a tocar.</p>
+      </div>
+
+      <div class="landing2-features">
+        <div class="landing2-feature">
+          <div class="landing2-feature-icon">
+            <span class="landing2-feature-icon-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg></span>
+          </div>
+          <div>
+            <div class="landing2-feature-title">Busque qualquer música</div>
+            <div class="landing2-feature-desc">Catálogo do Spotify, tocando direto no canal de voz</div>
+          </div>
+        </div>
+        <div class="landing2-feature">
+          <div class="landing2-feature-icon">
+            <span class="landing2-feature-icon-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l3 3-3 3"/><path d="M20 6H8a4 4 0 00-4 4v1"/><path d="M7 21l-3-3 3-3"/><path d="M4 18h12a4 4 0 004-4v-1"/></svg></span>
+          </div>
+          <div>
+            <div class="landing2-feature-title">Fila com autoplay</div>
+            <div class="landing2-feature-desc">Quando a música acaba, entra outra parecida sozinho</div>
+          </div>
+        </div>
+        <div class="landing2-feature">
+          <div class="landing2-feature-icon">
+            <span class="landing2-feature-icon-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h13M4 11h13M4 16h7"/><circle cx="17" cy="17" r="3"/></svg></span>
+          </div>
+          <div>
+            <div class="landing2-feature-title">Privada, do servidor ou pública</div>
+            <div class="landing2-feature-desc">Você escolhe quem pode ver e tocar cada playlist</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="landing2-cta">
+        <button id="landing-login-btn" class="landing2-discord-btn" type="button">
+          <span class="landing2-discord-btn-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.3 5.3A16 16 0 0015.4 4l-.3.6a12 12 0 013.4 1.7 11.4 11.4 0 00-9.9 0A12 12 0 0112 4.6L11.6 4a16 16 0 00-3.9 1.3C5.2 9 4.5 12.6 4.9 16.2a15.9 15.9 0 004.8 2.4l.6-1a10.4 10.4 0 01-1.7-.8l.4-.3a11.4 11.4 0 009 0l.4.3a10.4 10.4 0 01-1.7.8l.6 1a15.9 15.9 0 004.8-2.4c.4-3.9-.4-7.5-2.8-10.9zM9.7 14.2c-.9 0-1.7-.9-1.7-1.9s.7-1.9 1.7-1.9 1.7.9 1.7 1.9-.8 1.9-1.7 1.9zm4.6 0c-.9 0-1.7-.9-1.7-1.9s.7-1.9 1.7-1.9 1.7.9 1.7 1.9-.8 1.9-1.7 1.9z"/></svg></span>
+          Entrar com Discord
+        </button>
+        <div class="landing2-footnote">Leva menos de 10 segundos. Só pedimos seu perfil e a lista de servidores.</div>
+      </div>
+    </div>
+
+    <div class="landing2-right">
+      <div class="landing2-right-glow"></div>
+      <div class="landing2-vinyl-outer">
+        <div class="landing2-vinyl-disc-wrap">
+          <div class="landing2-vinyl-disc"></div>
+          <div class="landing2-vinyl-spindle"></div>
+        </div>
+        <div class="landing2-tonearm-base"></div>
+        <div class="landing2-tonearm">
+          <div class="landing2-tonearm-shaft"></div>
+          <div class="landing2-tonearm-head"></div>
+        </div>
+      </div>
+      <div class="landing2-now-playing">
+        <div class="landing2-now-playing-art"></div>
+        <div class="landing2-now-playing-text">
+          <div class="landing2-now-playing-title">Tocando agora no #geral</div>
+          <div class="landing2-now-playing-sub">Só Rock 2 · 38 faixas na fila</div>
+        </div>
+        <div class="landing2-eq">
+          <div class="landing2-eq-bar" style="height:40%"></div>
+          <div class="landing2-eq-bar" style="height:100%"></div>
+          <div class="landing2-eq-bar" style="height:65%"></div>
+          <div class="landing2-eq-bar" style="height:85%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Estrutura abaixo copiada diretamente de "template html/inicio.html"
+       (extraida via outerHTML do DOM ja renderizado, em duas larguras -
+       mobile e desktop, que sao DOMs diferentes no template). Os valores de
+       layout foram transcritos literalmente para as classes abaixo (nao
+       reaproximados). -->
+  <div class="app-shell">
+   <!-- Barra superior global (so no PC): cobre a largura inteira, acima da
+        sidebar+conteudo, igual o Spotify - da profundidade separando as
+        camadas em vez de tudo ser a mesma cor. -->
+   <header class="desktop-global-topbar">
+     <div class="dgt-brand js-home-trigger" role="button" tabindex="0" title="Voltar para a tela inicial">
+       <span class="dgt-brand-dot"></span>
+       <span class="dgt-brand-title">Vitrola</span>
+     </div>
+     <form id="search-form-desktop" class="dgt-search-form">
+       <span class="app-search-icon">
+         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+       </span>
+       <input id="search-input-desktop" class="app-search-input js-search-input" type="text" placeholder="Buscar música ou artista..." autocomplete="off" />
+     </form>
+     <div class="dgt-right">
+       <div class="js-topbar-user-chip dgt-user-chip hidden">
+         <img class="js-topbar-user-avatar dgt-user-avatar" alt="" />
+         <span class="js-topbar-user-name dgt-user-name"></span>
+       </div>
+       <button id="settings-btn-desktop" class="dgt-icon-btn" type="button" title="Configurações">
+         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+       </button>
+     </div>
+   </header>
+
+   <div class="app-shell-row">
+    <!-- Sidebar: so existe/aparece em telas de PC (>=900px) -->
+    <aside class="sidebar">
+      <nav class="sidebar-nav">
+        <button class="tab-btn sidebar-nav-btn active" data-tab="search" type="button">
+          <span class="sidebar-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg></span>
+          Buscar
+        </button>
+        <button class="tab-btn sidebar-nav-btn" data-tab="queue" type="button">
+          <span class="sidebar-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h11M4 12h11M4 17h7"/><path d="M18 14l4 3-4 3z" fill="currentColor"/></svg></span>
+          Fila
+        </button>
+        <button class="tab-btn sidebar-nav-btn" data-tab="playlists" type="button">
+          <span class="sidebar-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h13M4 11h13M4 16h7"/><circle cx="17" cy="17" r="3"/></svg></span>
+          Playlists
+        </button>
+        <button class="tab-btn sidebar-nav-btn" data-tab="genres" type="button">
+          <span class="sidebar-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.2"/></svg></span>
+          Gêneros
+        </button>
+      </nav>
+
+      <div class="sidebar-divider"></div>
+
+      <div id="sidebar-playlists-list" class="sidebar-playlists-list"></div>
+      <div class="spacer"></div>
+    </aside>
+
+    <div class="main-panel">
+      <!-- Header mobile: sticky, some no PC -->
+      <header class="app-header">
+        <div class="app-header-row">
+          <div id="brand-home-link" class="brand-mark js-home-trigger" role="button" tabindex="0" title="Voltar para a tela inicial"></div>
+          <div class="brand-title">Vitrola</div>
+          <div class="spacer"></div>
+          <div class="js-topbar-user-chip dgt-user-chip dgt-user-chip--mobile hidden">
+            <img class="js-topbar-user-avatar dgt-user-avatar" alt="" />
+            <span class="js-topbar-user-name dgt-user-name"></span>
+          </div>
+          <button id="settings-btn" class="header-icon-btn" type="button" title="Configurações">
+            <span class="header-icon-btn-glyph">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            </span>
+          </button>
+        </div>
+        <form id="search-form" class="app-search-form">
+          <span class="app-search-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+          </span>
+          <input id="search-input" class="app-search-input js-search-input" type="text" placeholder="Buscar música ou artista..." autocomplete="off" />
+        </form>
+      </header>
+
+    <div class="app-scroll">
+
+      <!-- Aba Buscar -->
+      <div id="tab-search" class="tab-panel active">
+        <div id="quick-access" class="hidden">
+          <section id="history-section" class="hscroll-section hidden">
+            <h2 class="tpl-heading">Recomendado para você <span id="history-count-badge" class="tpl-count"></span></h2>
+            <div id="history-grid" class="hscroll-row"></div>
+          </section>
+
+          <section id="playlists-quick-section-private" class="hscroll-section hidden">
+            <h2 class="tpl-heading">Suas playlists</h2>
+            <div id="quick-access-grid-private" class="hscroll-row"></div>
+          </section>
+
+          <section id="playlists-quick-section-server" class="hscroll-section hidden">
+            <h2 class="tpl-heading">Playlists do servidor</h2>
+            <div id="quick-access-grid-server" class="hscroll-row"></div>
+          </section>
+
+          <section id="playlists-quick-section-public" class="hscroll-section hidden">
+            <h2 class="tpl-heading">Playlists públicas</h2>
+            <div id="quick-access-grid-public" class="hscroll-row"></div>
+          </section>
+
+          <section class="grid-section">
+            <h2 class="tpl-heading">Gêneros</h2>
+            <div id="genre-grid" class="genre-grid-2col"></div>
+          </section>
+
+          <section id="home-queue-section" class="list-section hidden">
+            <div class="list-section-header">
+              <h2 class="tpl-heading">Na fila</h2>
+              <span id="home-queue-count-badge" class="tpl-count"></span>
+              <div class="spacer"></div>
+              <button id="home-queue-clear-btn" class="pill-danger-btn" type="button">Limpar</button>
+            </div>
+            <div class="tpl-track-row-header">
+              <div>#</div><div>Título</div><div>Artista</div><div class="tpl-track-time-cell">Tempo</div><div></div>
+            </div>
+            <div id="home-queue-tbody" class="tpl-track-row-list"></div>
+          </section>
+        </div>
+
+        <div id="search-results-section" class="list-section">
+          <ul id="search-results" class="track-list"></ul>
+        </div>
+      </div>
+
+      <!-- Aba Fila -->
+      <div id="tab-queue" class="tab-panel">
+        <div class="queue-page-header">
+          <div class="queue-page-header-left">
+            <h1 class="queue-page-title">Fila de reprodução</h1>
+            <span id="queue-count-badge" class="queue-count-pill"></span>
+          </div>
+          <label class="queue-autoplay-row">
+            <span class="queue-autoplay-label">Autoplay</span>
+            <span class="settings-toggle">
+              <input id="autoplay-toggle" class="js-autoplay-toggle" type="checkbox" />
+              <span class="settings-toggle-track"></span>
+            </span>
+          </label>
+        </div>
+
+        <div id="now-playing-block" class="now-playing-card hidden">
+          <div class="now-playing-art">
+            <img class="js-art" alt="" />
+          </div>
+          <div class="now-playing-text">
+            <div class="now-playing-label">Tocando agora</div>
+            <div class="js-track-name now-playing-title"></div>
+            <div class="js-track-artist now-playing-artist"></div>
+          </div>
+          <div class="now-playing-time">
+            <svg class="icon now-playing-wave-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"><path d="M4 10v4M9 6v12M14 3v18M19 8v8"/></svg>
+            <span id="now-playing-time-text" class="now-playing-time-text"></span>
+          </div>
+        </div>
+
+        <div class="tpl-track-row-header">
+          <div>#</div><div>Título</div><div>Artista</div><div class="tpl-track-time-cell">Tempo</div><div></div>
+        </div>
+        <div id="queue-tbody" class="tpl-track-row-list"></div>
+      </div>
+
+      <!-- Aba Playlists -->
+      <div id="tab-playlists" class="tab-panel">
+        <div id="playlists-root">
+          <div class="pl-page-header">
+            <div>
+              <h1 class="pl-page-title">Playlists</h1>
+              <p id="playlists-page-subtitle" class="pl-page-subtitle"></p>
+            </div>
+            <div id="playlists-filter-group" class="pl-filter-group">
+              <button type="button" class="pl-filter-btn active" data-filter="all">Todas</button>
+              <button type="button" class="pl-filter-btn" data-filter="private">Privada</button>
+              <button type="button" class="pl-filter-btn" data-filter="server">Servidor</button>
+              <button type="button" class="pl-filter-btn" data-filter="public">Pública</button>
+            </div>
+          </div>
+
+          <button id="open-create-playlist-btn" class="pl-create-trigger-btn" type="button">
+            <span class="pl-action-plus">+</span> Criar playlist
+          </button>
+
+          <div id="playlists-list" class="playlist-sections"></div>
+        </div>
+
+        <!-- Tela dedicada de criacao (nome, capa, visibilidade ou importar) -->
+        <div id="playlist-create" class="playlist-detail hidden">
+          <button id="playlist-create-back-btn" class="pl-back-btn" type="button">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            Voltar
+          </button>
+
+          <div class="pl-hero pl-hero--create">
+            <div class="pl-hero-content">
+              <div class="pl-hero-cover pl-create-cover">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+              </div>
+              <div class="pl-hero-text">
+                <div id="create-playlist-visibility-label" class="pl-hero-visibility">Playlist privada</div>
+                <input id="new-playlist-name" type="text" class="pl-create-name-input" placeholder="Minha playlist" autocomplete="off" maxlength="80" />
+              </div>
+            </div>
+          </div>
+
+          <form id="new-playlist-form" class="pl-create-form">
+            <div id="new-playlist-visibility-group" class="pl-visibility-group">
+              <button type="button" class="pl-visibility-btn active" data-value="private">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                Privada
+              </button>
+              <button type="button" class="pl-visibility-btn" data-value="server">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                Servidor
+              </button>
+              <button type="button" class="pl-visibility-btn" data-value="public">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+                Pública
+              </button>
+            </div>
+            <input type="hidden" id="new-playlist-visibility" value="private" />
+            <div class="pl-create-row">
+              <button type="submit" class="pl-create-btn">Criar playlist</button>
+              <span id="new-playlist-hint" class="pl-create-hint">Só você pode ver.</span>
+            </div>
+          </form>
+
+          <div class="pl-import-divider"></div>
+
+          <div class="pl-import-inline">
+            <span class="pl-import-label">Ou importe de</span>
+            <div class="pl-import-chips">
+              <button id="import-spotify-btn" class="pl-import-chip" type="button" data-platform="spotify" title="Importar do Spotify">
+                <span class="pl-import-chip-icon pl-import-chip-icon--spotify"><svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 11-.277-1.215c3.809-.871 7.077-.496 9.712 1.115a.623.623 0 01.207.857zm1.223-2.723a.78.78 0 01-1.072.257c-2.688-1.652-6.786-2.131-9.966-1.166a.779.779 0 11-.452-1.49c3.632-1.102 8.147-.568 11.233 1.328a.78.78 0 01.257 1.071zm.105-2.835C14.692 9.115 9.375 8.923 6.297 9.873a.935.935 0 11-.547-1.788c3.532-1.073 9.404-.845 13.115 1.386a.935.935 0 11-.951 1.605z"/></svg></span>
+                Spotify
+              </button>
+              <button id="import-youtube-btn" class="pl-import-chip" type="button" data-platform="youtube" title="Importar do YouTube Music">
+                <span class="pl-import-chip-icon pl-import-chip-icon--youtube"><svg class="icon" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><path d="M10 8.5l6 3.5-6 3.5z" fill="#fff"/></svg></span>
+                YouTube Music
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="playlist-detail" class="playlist-detail hidden">
+          <button id="playlist-back-btn" class="pl-back-btn" type="button">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            Voltar
+          </button>
+
+          <div class="pl-hero">
+            <div id="playlist-hero-bg" class="pl-hero-bg"></div>
+            <div class="pl-hero-content">
+              <div id="playlist-hero-cover" class="pl-hero-cover"></div>
+              <div class="pl-hero-text">
+                <div id="playlist-detail-visibility" class="pl-hero-visibility"></div>
+                <h1 id="playlist-detail-name" class="pl-hero-title"></h1>
+                <div id="playlist-detail-meta" class="pl-hero-meta"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pl-toolbar">
+            <button id="playlist-play-all-btn" class="pl-play-btn" type="button" title="Tocar tudo">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <button id="playlist-detail-favorite-btn" class="pl-round-btn hidden" type="button"></button>
+            <button id="playlist-detail-delete-btn" class="pl-round-btn hidden" type="button" title="Apagar playlist"></button>
+          </div>
+
+          <div class="pl-table">
+            <div class="tpl-track-row-header">
+              <div>#</div><div>Título</div><div>Artista</div><div class="tpl-track-time-cell">Tempo</div><div></div>
+            </div>
+            <div id="playlist-detail-tracks" class="tpl-track-row-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aba Gêneros -->
+      <div id="tab-genres" class="tab-panel">
+        <div class="grid-section">
+          <h2 class="tpl-heading">Gêneros</h2>
+          <div id="genre-grid-full" class="genre-grid-2col"></div>
+        </div>
+      </div>
+
+    </div>
+    </div>
+   </div>
+
+   <!-- Prévia da próxima faixa da fila, logo acima da barra do player (so PC).
+        Clicar expande e mostra o resto da fila (ver .next-up-expand-panel). -->
+   <div id="dpb-next-up" class="dpb-next-up js-next-up hidden">
+    <span class="dpb-next-up-label">A seguir</span>
+    <div class="dpb-next-up-art js-next-up-art">
+      <img class="js-next-up-art-img" alt="" />
+    </div>
+    <div class="dpb-next-up-text">
+      <span class="dpb-next-up-name js-next-up-name"></span>
+      <span class="dpb-next-up-artist js-next-up-artist"></span>
+    </div>
+    <div class="next-up-expand-panel js-next-up-expand hidden"></div>
+   </div>
+
+   <!-- Barra do player no PC: linha inferior do flex-column da app-shell,
+        ao lado da sidebar+main (nao existe no mobile). -->
+   <div class="desktop-player-bar">
+    <div class="dpb-left">
+      <div class="dpb-art">
+        <img class="js-art" alt="" />
+      </div>
+      <div class="dpb-text">
+        <div class="js-track-name dpb-name">Nada tocando</div>
+        <div class="js-track-artist dpb-artist"></div>
+      </div>
+      <button id="player-like-btn" class="dpb-round dpb-round--sm" type="button" title="Adicionar à playlist">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.6-7-9.4A4.1 4.1 0 0112 8a4.1 4.1 0 017 2.6C19 15.4 12 20 12 20z"/></svg>
+      </button>
+    </div>
+
+    <div class="dpb-center">
+      <div class="dpb-buttons">
+        <button id="player-shuffle-btn" class="dpb-round dpb-round--sm" type="button" title="Aleatório (em breve)">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h4v4M20 4l-6 6M8 20H4v-4M4 20l6-6M16 20h4v-4M20 20L4 4"/></svg>
+        </button>
+        <button id="player-prev-btn" class="dpb-round dpb-round--bright" type="button" title="Anterior (em breve)">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5v14L7 12z" fill="currentColor"/><path d="M5 5v14"/></svg>
+        </button>
+        <button class="js-playpause dpb-play" type="button" title="Play/Pause">
+          <svg class="icon icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          <svg class="icon icon-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" style="display:none"><path d="M9 5v14M15 5v14"/></svg>
+        </button>
+        <button class="js-skip dpb-round dpb-round--bright" type="button" title="Pular">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14l11-7z" fill="currentColor"/><path d="M19 5v14"/></svg>
+        </button>
+        <button class="js-repeat-btn dpb-round dpb-round--sm" type="button" title="Autoplay: continua com músicas parecidas">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l3 3-3 3"/><path d="M20 6H8a4 4 0 00-4 4v1"/><path d="M7 21l-3-3 3-3"/><path d="M4 18h12a4 4 0 004-4v-1"/></svg>
+        </button>
+      </div>
+      <div class="dpb-progress-row">
+        <span class="js-elapsed dpb-time">0:00</span>
+        <input class="js-progress dpb-progress" type="range" min="0" max="100" value="0" step="0.1" />
+        <span class="js-duration dpb-time">0:00</span>
+      </div>
+    </div>
+
+    <div class="dpb-volume">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h3l4 4V6L7 10z" fill="currentColor"/><path d="M16 9.5a4 4 0 010 5M18.5 7a7.5 7.5 0 010 10"/></svg>
+      <input id="player-volume-desktop" class="js-volume dpb-volume-range" type="range" min="0" max="2" value="1" step="0.01" />
+      <span id="player-volume-pct-desktop" class="js-volume-pct dpb-time">100%</span>
+      <button id="fullscreen-btn" class="js-fullscreen-btn dpb-round dpb-round--sm" type="button" title="Tela cheia">
+        <svg class="icon icon-fs-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3"/></svg>
+        <svg class="icon icon-fs-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M9 3v4a1 1 0 01-1 1H4M15 3v4a1 1 0 001 1h4M9 21v-4a1 1 0 00-1-1H4M15 21v-4a1 1 0 011-1h4"/></svg>
+      </button>
+    </div>
+   </div>
+  </div>
+
+  <!-- Visao "tocando agora" em tela cheia (capa grande, estilo Spotify).
+       No celular e a unica forma de acessar volume, autoplay, aleatorio e
+       anterior - a barra mini nao tem espaco pra tudo isso. -->
+  <div id="now-playing-fullscreen" class="np-fullscreen hidden">
+    <div id="np-fullscreen-bg" class="np-fullscreen-bg js-art-bg"></div>
+    <button id="np-fullscreen-exit-btn" class="np-fullscreen-exit" type="button" title="Voltar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <div class="np-fullscreen-content">
+      <div class="np-fullscreen-art">
+        <img class="js-art" alt="" />
+      </div>
+      <div class="js-track-name np-fullscreen-title">Nada tocando</div>
+      <div class="js-track-artist np-fullscreen-artist"></div>
+
+      <div class="np-fullscreen-progress-row">
+        <span class="js-elapsed np-fullscreen-time">0:00</span>
+        <input class="js-progress np-fullscreen-progress" type="range" min="0" max="100" value="0" step="0.1" />
+        <span class="js-duration np-fullscreen-time">0:00</span>
+      </div>
+
+      <div class="np-fullscreen-controls">
+        <button class="dpb-round dpb-round--sm" type="button" title="Aleatório (em breve)">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h4v4M20 4l-6 6M8 20H4v-4M4 20l6-6M16 20h4v-4M20 20L4 4"/></svg>
+        </button>
+        <button class="dpb-round dpb-round--bright" type="button" title="Anterior (em breve)">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5v14L7 12z" fill="currentColor"/><path d="M5 5v14"/></svg>
+        </button>
+        <button class="js-playpause np-fullscreen-play" type="button" title="Play/Pause">
+          <svg class="icon icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          <svg class="icon icon-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" style="display:none"><path d="M9 5v14M15 5v14"/></svg>
+        </button>
+        <button class="js-skip dpb-round dpb-round--bright" type="button" title="Pular">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14l11-7z" fill="currentColor"/><path d="M19 5v14"/></svg>
+        </button>
+        <button class="js-repeat-btn dpb-round dpb-round--sm" type="button" title="Autoplay: continua com músicas parecidas">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l3 3-3 3"/><path d="M20 6H8a4 4 0 00-4 4v1"/><path d="M7 21l-3-3 3-3"/><path d="M4 18h12a4 4 0 004-4v-1"/></svg>
+        </button>
+      </div>
+
+      <div class="np-fullscreen-volume-row">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h3l4 4V6L7 10z" fill="currentColor"/><path d="M16 9.5a4 4 0 010 5M18.5 7a7.5 7.5 0 010 10"/></svg>
+        <input class="js-volume np-fullscreen-volume-range" type="range" min="0" max="2" value="1" step="0.01" />
+        <span class="js-volume-pct np-fullscreen-volume-pct">100%</span>
+      </div>
+
+      <div class="np-fullscreen-next-up js-next-up hidden">
+        <span class="np-fullscreen-next-up-label">A seguir</span>
+        <div class="np-fullscreen-next-up-art js-next-up-art">
+          <img class="js-next-up-art-img" alt="" />
+        </div>
+        <div class="np-fullscreen-next-up-text">
+          <span class="np-fullscreen-next-up-name js-next-up-name"></span>
+          <span class="np-fullscreen-next-up-artist js-next-up-artist"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barra fixa do mobile: mini player + navegação (copiada do template) -->
+  <div class="bottom-bar">
+    <div class="bottom-bar-next-up js-next-up hidden">
+      <span class="bottom-bar-next-up-label">Próxima</span>
+      <div class="bottom-bar-next-up-art js-next-up-art">
+        <img class="js-next-up-art-img" alt="" />
+      </div>
+      <span class="bottom-bar-next-up-name js-next-up-name"></span>
+      <span id="bottom-bar-next-up-count" class="bottom-bar-next-up-count"></span>
+      <div class="next-up-expand-panel js-next-up-expand hidden"></div>
+    </div>
+    <div class="bottom-bar-track">
+      <div class="bottom-bar-art">
+        <img class="js-art" id="player-art" alt="" />
+      </div>
+      <div class="bottom-bar-text">
+        <div class="js-track-name bottom-bar-name" id="player-track-name">Nada tocando</div>
+        <div class="js-track-artist bottom-bar-artist" id="player-track-artist"></div>
+      </div>
+      <button class="js-fullscreen-btn bottom-bar-expand-btn" type="button" title="Tela cheia">
+        <svg class="icon icon-fs-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3"/></svg>
+        <svg class="icon icon-fs-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M9 3v4a1 1 0 01-1 1H4M15 3v4a1 1 0 001 1h4M9 21v-4a1 1 0 00-1-1H4M15 21v-4a1 1 0 011-1h4"/></svg>
+      </button>
+    </div>
+    <div class="bottom-bar-progress-row">
+      <span class="js-elapsed bottom-bar-time">0:00</span>
+      <input class="js-progress bottom-bar-progress-range" type="range" min="0" max="100" value="0" step="0.1" />
+      <span class="js-remaining bottom-bar-time">0:00</span>
+    </div>
+    <div class="bottom-bar-controls-row">
+      <button class="bottom-bar-icon-btn" type="button" title="Aleatório (em breve)">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h4v4M20 4l-6 6M8 20H4v-4M4 20l6-6M16 20h4v-4M20 20L4 4"/></svg>
+      </button>
+      <button class="bottom-bar-icon-btn bottom-bar-icon-btn--bright" type="button" title="Anterior (em breve)">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5v14L7 12z" fill="currentColor"/><path d="M5 5v14"/></svg>
+      </button>
+      <button class="js-playpause bottom-bar-play" id="player-playpause-btn" type="button" title="Play/Pause">
+        <svg class="icon icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <svg class="icon icon-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" style="display:none"><path d="M9 5v14M15 5v14"/></svg>
+      </button>
+      <button class="js-skip bottom-bar-icon-btn bottom-bar-icon-btn--bright" id="player-skip-btn" type="button" title="Pular">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14l11-7z" fill="currentColor"/><path d="M19 5v14"/></svg>
+      </button>
+      <button class="js-repeat-btn bottom-bar-icon-btn" type="button" title="Autoplay: continua com músicas parecidas">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l3 3-3 3"/><path d="M20 6H8a4 4 0 00-4 4v1"/><path d="M7 21l-3-3 3-3"/><path d="M4 18h12a4 4 0 004-4v-1"/></svg>
+      </button>
+      <div class="bottom-bar-volume-wrap">
+        <div id="bottom-bar-volume-popover" class="bottom-bar-volume-popover hidden">
+          <span class="js-volume-pct bottom-bar-volume-pct">100%</span>
+          <div class="bottom-bar-volume-slider-track">
+            <input class="js-volume bottom-bar-volume-range" type="range" min="0" max="2" value="1" step="0.01" />
+          </div>
+        </div>
+        <button id="bottom-bar-volume-btn" class="bottom-bar-icon-btn" type="button" title="Volume">
+          <svg class="icon icon-vol-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h3l4 4V6L7 10z" fill="currentColor"/><path d="M16 9.5a4 4 0 010 5M18.5 7a7.5 7.5 0 010 10"/></svg>
+          <svg class="icon icon-vol-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M4 10v4h3l4 4V6L7 10z" fill="currentColor"/><path d="M16 9l4.5 4.5M20.5 9L16 13.5"/></svg>
+        </button>
+      </div>
+    </div>
+    <nav class="bottom-bar-nav">
+      <button class="tab-btn active" data-tab="search" type="button">
+        <span class="bottom-bar-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg></span>
+        Buscar
+      </button>
+      <button class="tab-btn" data-tab="queue" type="button">
+        <span class="bottom-bar-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h11M4 12h11M4 17h7"/><path d="M18 14l4 3-4 3z" fill="currentColor"/></svg></span>
+        Fila
+      </button>
+      <button class="tab-btn" data-tab="playlists" type="button">
+        <span class="bottom-bar-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h13M4 11h13M4 16h7"/><circle cx="17" cy="17" r="3"/></svg></span>
+        Playlists
+      </button>
+      <button class="tab-btn" data-tab="genres" type="button">
+        <span class="bottom-bar-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.2"/></svg></span>
+        Gêneros
+      </button>
+    </nav>
+  </div>
+
+  <!-- Modal: adicionar a playlist -->
+  <div id="add-to-playlist-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Adicionar à playlist</h3>
+      <ul id="modal-playlist-options" class="playlist-list"></ul>
+      <button id="modal-close-btn" class="link-btn">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Modal: importar playlist (Spotify ou YouTube/YouTube Music) -->
+  <div id="import-playlist-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3 id="import-playlist-title">Importar playlist</h3>
+      <form id="import-playlist-form">
+        <label>
+          Link da playlist (precisa ser pública)
+          <input id="import-playlist-url" type="text" placeholder="Cole o link aqui..." autocomplete="off" />
+        </label>
+        <label>
+          Visibilidade da cópia
+          <select id="import-playlist-visibility">
+            <option value="private">Privada (só eu)</option>
+            <option value="server">Servidor (quem está no meu servidor)</option>
+            <option value="public">Pública (qualquer servidor com o bot)</option>
+          </select>
+        </label>
+        <button id="import-playlist-submit-btn" type="submit">Importar</button>
+      </form>
+      <button id="import-playlist-close-btn" class="link-btn">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Modal: configurações -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-content settings-modal-content">
+      <div class="settings-modal-header">
+        <h3>Configurações</h3>
+        <button id="settings-close-x-btn" class="settings-close-x" type="button" title="Fechar" aria-label="Fechar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="settings-block">
+        <div class="settings-block-label">Conta</div>
+        <div class="settings-card">
+          <div id="account-logged-out">
+            <button id="discord-login-btn" class="discord-btn" type="button">Entrar com Discord</button>
+          </div>
+          <div id="account-logged-in" class="settings-account-row hidden">
+            <img id="account-avatar" class="account-avatar" alt="" />
+            <div class="settings-account-text">
+              <div id="account-username" class="settings-row-title"></div>
+              <div class="settings-row-sub">Conectado com Discord</div>
+            </div>
+            <button id="discord-logout-btn" class="settings-pill-btn" type="button">Sair</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-block">
+        <div class="settings-block-label">Servidor</div>
+        <div class="settings-card">
+          <div class="settings-field">
+            <label class="settings-field-label" for="guild-select">Servidor ativo</label>
+            <select id="guild-select" class="settings-select"></select>
+          </div>
+          <div class="settings-divider"></div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-title">Desconectar bot</div>
+              <div class="settings-row-sub">Sai do canal de voz e reseta o player</div>
+            </div>
+            <button id="force-reset-btn" class="settings-pill-btn settings-pill-btn--danger" type="button">Desconectar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-block">
+        <div class="settings-block-label">Player</div>
+        <div class="settings-card">
+          <div class="settings-row">
+            <div class="settings-row-title">Volume</div>
+            <div class="js-volume-pct settings-volume-pct">100%</div>
+          </div>
+          <div class="settings-volume-row">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h3l4 4V6L7 10z" fill="currentColor"/><path d="M16 9.5a4 4 0 010 5M18.5 7a7.5 7.5 0 010 10"/></svg>
+            <input id="player-volume" class="js-volume" type="range" min="0" max="2" value="1" step="0.01" />
+          </div>
+          <div class="settings-divider"></div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-title">Autoplay</div>
+              <div class="settings-row-sub">Continua tocando algo parecido quando a fila acaba</div>
+            </div>
+            <label class="settings-toggle">
+              <input id="autoplay-toggle-settings" class="js-autoplay-toggle" type="checkbox" />
+              <span class="settings-toggle-track"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-footer">
+        <div class="settings-footer-note">Alterações valem para este servidor.</div>
+        <div class="settings-footer-actions">
+          <button id="settings-close-btn" class="link-btn" type="button">Fechar</button>
+          <button id="settings-save-btn" type="button">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
