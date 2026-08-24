@@ -209,6 +209,22 @@ function createGuildPlayer() {
     const ffmpeg = spawn(ffmpegPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
     currentProcess = ffmpeg;
 
+    // Sem isso, se o binario do ffmpeg nao existir/nao rodar nesse sistema
+    // (ex: arquitetura errada num celular ARM), o processo falhava ao
+    // iniciar SEM logar nada em lugar nenhum - parecia que "nao acontecia
+    // nada" ao tentar tocar.
+    ffmpeg.on('error', (err) => {
+      console.error(`[player] falha ao iniciar o ffmpeg (${ffmpegPath}):`, err.message);
+    });
+
+    // -loglevel error faz o ffmpeg so escrever no stderr quando da erro de
+    // verdade - sem ler isso, qualquer problema dele (url invalida, decoder
+    // faltando, etc) era jogado fora silenciosamente.
+    let ffmpegStderr = '';
+    ffmpeg.stderr.on('data', (chunk) => {
+      ffmpegStderr += chunk.toString();
+    });
+
     // "close" e o sinal de verdade de que essa faixa acabou. Se currentProcess
     // ja for outro (substituido por um skip/nova faixa nesse meio-tempo), ou
     // se "signal" existir (fomos nos que matamos o processo, ver
@@ -218,6 +234,9 @@ function createGuildPlayer() {
     ffmpeg.once('close', (code, signal) => {
       if (currentProcess !== ffmpeg) return;
       currentProcess = null;
+      if (!signal && code !== 0 && ffmpegStderr.trim()) {
+        console.error(`[player] ffmpeg terminou com erro (code ${code}):`, ffmpegStderr.trim());
+      }
       if (signal) return;
       advanceQueue();
     });
