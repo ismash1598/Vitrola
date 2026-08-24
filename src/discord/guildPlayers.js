@@ -1,5 +1,23 @@
-const { spawn } = require('child_process');
-const ffmpegPath = require('ffmpeg-static');
+const { spawn, execFileSync } = require('child_process');
+
+// O binario generico baixado pelo pacote ffmpeg-static falha pra resolver
+// hostnames novos (tipo os do CDN de video do YouTube, que mudam a cada
+// faixa) dentro de ambientes proot (ex: rodando em Ubuntu via proot-distro
+// no Termux, num celular) - o DNS do sistema funciona (confirmado com
+// ping), mas esse binario especifico nao. Se o sistema ja tiver um ffmpeg
+// de verdade instalado (via apt, por exemplo - compilado pra essa
+// plataforma), usa ele em vez do generico.
+function resolveFfmpegPath() {
+  try {
+    const systemPath = execFileSync('which', ['ffmpeg']).toString().trim();
+    if (systemPath) return systemPath;
+  } catch {
+    // sem ffmpeg no PATH do sistema - usa o do pacote mesmo
+  }
+  return require('ffmpeg-static');
+}
+
+const ffmpegPath = resolveFfmpegPath();
 const {
   joinVoiceChannel,
   createAudioPlayer,
