@@ -1,11 +1,16 @@
 const crypto = require('crypto');
+const fs = require('fs');
 const path = require('path');
 const low = require('lowdb');
 const FileSync = require('lowdb/adapters/FileSync');
 
 // Sessoes persistem em disco (mesmo esquema das playlists) - antes ficavam
 // so em memoria e todo restart do servidor derrubava o login de todo mundo.
-const adapter = new FileSync(path.join(__dirname, '..', '..', 'data', 'sessions.json'));
+// data/ nao vai pro git, entao num clone novo a pasta ainda nao existe.
+const dataDir = path.join(__dirname, '..', '..', 'data');
+fs.mkdirSync(dataDir, { recursive: true });
+
+const adapter = new FileSync(path.join(dataDir, 'sessions.json'));
 const db = low(adapter);
 db.defaults({ sessions: {} }).write();
 
