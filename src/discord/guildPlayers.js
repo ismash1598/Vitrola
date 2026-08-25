@@ -423,6 +423,14 @@ function createGuildPlayer() {
     // e a musica "entrava pausada" na tela mesmo tocando de verdade.
     isPaused = false;
 
+    // Adianta a busca da PROXIMA (agora queue[0]) em paralelo com a
+    // resolucao/inicio da faixa atual, em vez de esperar startFfmpegAndPlay
+    // terminar pra so entao comecar. Isso importa principalmente quando a
+    // faixa atual demora pra carregar (nao tinha sido pre-buscada) ou e
+    // curta - sem isso, sobrava pouco tempo de folga e a proxima as vezes
+    // ainda nao estava pronta quando a vez dela chegava.
+    prefetchNextTrack();
+
     try {
       await playCurrentAtOffset(0, myToken);
     } catch (err) {
