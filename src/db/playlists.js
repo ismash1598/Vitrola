@@ -1,14 +1,16 @@
 const fs = require('fs');
 const path = require('path');
 const low = require('lowdb');
-const FileSync = require('lowdb/adapters/FileSync');
+const AsyncFileAdapter = require('./asyncFileAdapter');
 
 // data/ nao vai pro git (tem dado de usuario), entao num clone novo essa
-// pasta nem existe ainda - o FileSync so cria o arquivo, nao a pasta.
+// pasta nem existe ainda - o adapter so cria o arquivo, nao a pasta.
 const dataDir = path.join(__dirname, '..', '..', 'data');
 fs.mkdirSync(dataDir, { recursive: true });
 
-const adapter = new FileSync(path.join(dataDir, 'playlists.json'));
+const adapter = new AsyncFileAdapter(path.join(dataDir, 'playlists.json'), {
+  defaultValue: { playlists: [] },
+});
 const db = low(adapter);
 
 db.defaults({ playlists: [] }).write();

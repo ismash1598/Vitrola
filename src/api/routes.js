@@ -73,10 +73,13 @@ router.get(
 router.use(requireAuth);
 
 // ---- Status ----
+// fullQueue=1 so quando o cliente realmente precisa da fila inteira (aba
+// Fila aberta, painel "a seguir" expandido). O polling normal recebe so uma
+// previa - ver comentario em getStatus.
 router.get('/status', (req, res) => {
   const guildId = requireGuildId(req, res);
   if (!guildId) return;
-  res.json(getPlayer(guildId).getStatus());
+  res.json(getPlayer(guildId).getStatus({ fullQueue: req.query.fullQueue === '1' }));
 });
 
 // ---- Fila ----

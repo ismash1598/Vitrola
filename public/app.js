@@ -428,66 +428,46 @@
     });
   }
 
-  async function renderPlaylistsQuickGrid() {
-    if (!currentUser) {
-      clearPlaylistQuickSections();
-      return;
-    }
-    try {
-      const lists = await api('/playlists');
-      const groups = categorizePlaylistsForUser(lists);
-      PLAYLIST_CATEGORIES.forEach(({ key }) => {
-        const gridEl = document.getElementById(`quick-access-grid-${key}`);
-        const sectionEl = document.getElementById(`playlists-quick-section-${key}`);
-        gridEl.innerHTML = '';
-        const items = groups[key].slice(0, 8);
-        items.forEach((pl) => gridEl.appendChild(buildPlaylistCard(pl)));
-        sectionEl.classList.toggle('hidden', items.length === 0);
-      });
-    } catch (err) {
-      console.error('Erro ao carregar playlists:', err.message);
-    }
+  // As duas funcoes abaixo recebem a lista ja buscada (ver renderPlaylists),
+  // em vez de cada uma buscar a sua.
+  function renderPlaylistsQuickGrid(lists) {
+    const groups = categorizePlaylistsForUser(lists);
+    PLAYLIST_CATEGORIES.forEach(({ key }) => {
+      const gridEl = document.getElementById(`quick-access-grid-${key}`);
+      const sectionEl = document.getElementById(`playlists-quick-section-${key}`);
+      gridEl.innerHTML = '';
+      const items = groups[key].slice(0, 8);
+      items.forEach((pl) => gridEl.appendChild(buildPlaylistCard(pl)));
+      sectionEl.classList.toggle('hidden', items.length === 0);
+    });
   }
 
-  async function renderSidebarPlaylists() {
+  function renderSidebarPlaylists(lists) {
     const list = document.getElementById('sidebar-playlists-list');
-    if (!currentUser) {
-      list.innerHTML = '';
-      return;
-    }
-    try {
-      const lists = await api('/playlists');
-      const groups = categorizePlaylistsForUser(lists);
-      list.innerHTML = '';
-      PLAYLIST_CATEGORIES.forEach(({ key, label }) => {
-        const items = groups[key];
-        if (!items.length) return;
-        const heading = document.createElement('div');
-        heading.className = 'sidebar-section-label sidebar-playlist-category';
-        heading.textContent = label;
-        list.appendChild(heading);
-        items.forEach((pl) => {
-          const item = document.createElement('div');
-          item.className = 'sidebar-playlist-item';
-          const art = pl.tracks[0]?.albumArt || '';
-          item.innerHTML = `
-            ${mediaArtHtml(pl.name, art, 'sidebar-playlist-art')}
-            <div class="sidebar-playlist-text">
-              <div class="sidebar-playlist-name">${escapeHtml(pl.name)}</div>
-              <div class="sidebar-playlist-count">${pl.tracks.length} faixas</div>
-            </div>
-          `;
-          item.addEventListener('click', () => goToPlaylist(pl.id));
-          list.appendChild(item);
-        });
+    const groups = categorizePlaylistsForUser(lists);
+    list.innerHTML = '';
+    PLAYLIST_CATEGORIES.forEach(({ key, label }) => {
+      const items = groups[key];
+      if (!items.length) return;
+      const heading = document.createElement('div');
+      heading.className = 'sidebar-section-label sidebar-playlist-category';
+      heading.textContent = label;
+      list.appendChild(heading);
+      items.forEach((pl) => {
+        const item = document.createElement('div');
+        item.className = 'sidebar-playlist-item';
+        const art = pl.tracks[0]?.albumArt || '';
+        item.innerHTML = `
+          ${mediaArtHtml(pl.name, art, 'sidebar-playlist-art')}
+          <div class="sidebar-playlist-text">
+            <div class="sidebar-playlist-name">${escapeHtml(pl.name)}</div>
+            <div class="sidebar-playlist-count">${pl.tracks.length} faixas</div>
+          </div>
+        `;
+        item.addEventListener('click', () => goToPlaylist(pl.id));
+        list.appendChild(item);
       });
-    } catch (err) {
-      console.error('Erro ao carregar playlists da sidebar:', err.message);
-    }
-  }
-
-  async function renderQuickAccess() {
-    await Promise.all([renderHistoryGrid(), renderPlaylistsQuickGrid(), renderSidebarPlaylists()]);
+    });
   }
 
   // Generos genericos, so pra dar um ponto de partida na tela inicial - ao
@@ -639,18 +619,19 @@
     return row;
   }
 
+  // A aba Fila lista TODAS as faixas (e permite reordenar por indice), entao
+  // e o unico lugar que sempre precisa de fullQueue=1.
   async function renderQueue(status) {
     try {
       if (!status) {
         const guildId = settings.currentGuildId;
         if (!guildId) return;
-        status = await api(`/status?guildId=${encodeURIComponent(guildId)}`);
+        status = await api(`/status?guildId=${encodeURIComponent(guildId)}&fullQueue=1`);
         applyStatus(status);
       }
 
-      document.getElementById('queue-count-badge').textContent = status.queue.length
-        ? `${status.queue.length} faixas`
-        : '';
+      const total = status.queueLength ?? status.queue.length;
+      document.getElementById('queue-count-badge').textContent = total ? `${total} faixas` : '';
 
       const tbody = document.getElementById('queue-tbody');
       tbody.innerHTML = '';
@@ -973,16 +954,37 @@
     }
   }
 
+  // Ponto UNICO onde as playlists sao buscadas do servidor. As tres visoes
+  // que mostram playlist (grade da tela inicial, sidebar e a aba Playlists)
+  // recebem a mesma lista por parametro - antes cada uma fazia a propria
+  // chamada, entao toda vez que algo mudava (criar/favoritar/apagar) o
+  // mesmo GET /playlists ia 3x seguidas, e cada resposta traz TODAS as
+  // playlists com TODAS as faixas (>100 KB de JSON).
   async function renderPlaylists() {
-    renderQuickAccess();
     const list = document.getElementById('playlists-list');
+
     if (!currentUser) {
       document.getElementById('playlists-page-subtitle').textContent = '';
       list.innerHTML = '<p class="playlist-empty-note">Entre com Discord (ícone ⚙) para ver suas playlists.</p>';
+      clearPlaylistQuickSections();
+      document.getElementById('sidebar-playlists-list').innerHTML = '';
+      renderHistoryGrid();
       return;
     }
-    const playlists = await api('/playlists');
+
+    renderHistoryGrid();
+
+    let playlists;
+    try {
+      playlists = await api('/playlists');
+    } catch (err) {
+      console.error('Erro ao carregar playlists:', err.message);
+      return;
+    }
+
     lastFetchedPlaylists = playlists;
+    renderPlaylistsQuickGrid(playlists);
+    renderSidebarPlaylists(playlists);
     renderPlaylistSections(playlists);
   }
 
@@ -1386,8 +1388,10 @@
     });
     repeatBtnEls().forEach((el) => el.classList.toggle('active', status.autoplay));
 
-    renderHomeQueuePreview(status.queue);
-    renderNextUp(status.current ? status.queue[0] : null, status.queue);
+    // status.queue pode vir cortado (ver getStatus no backend) - por isso os
+    // contadores usam status.queueLength, nunca status.queue.length.
+    renderHomeQueuePreview(status.queue, status.queueLength);
+    renderNextUp(status.current ? status.queue[0] : null, status.queue, status.queueLength);
   }
 
   // ---------- Prévia da próxima faixa, acima da barra do player (PC e mobile) ----------
@@ -1407,8 +1411,8 @@
     return row;
   }
 
-  function populateExpandPanel(panel) {
-    const rest = lastQueueSnapshot.slice(1);
+  function populateExpandPanel(panel, tracks) {
+    const rest = (tracks || lastQueueSnapshot).slice(1);
     panel.innerHTML = '';
     if (!rest.length) {
       panel.innerHTML = '<div class="next-up-expand-empty">Nada mais na fila</div>';
@@ -1417,16 +1421,30 @@
     rest.forEach((t) => panel.appendChild(buildNextUpExpandRow(t)));
   }
 
+  // O painel expandido e o unico lugar (fora da aba Fila) que mostra a fila
+  // inteira - por isso pede fullQueue=1 aqui, sob demanda, em vez de o
+  // polling de 1s carregar tudo o tempo todo. Mostra na hora o que ja tem em
+  // memoria e completa quando a resposta chega.
+  async function openExpandPanel(panel) {
+    populateExpandPanel(panel);
+    panel.classList.remove('hidden');
+    const guildId = settings.currentGuildId;
+    if (!guildId) return;
+    try {
+      const full = await api(`/status?guildId=${encodeURIComponent(guildId)}&fullQueue=1`);
+      if (!panel.classList.contains('hidden')) populateExpandPanel(panel, full.queue);
+    } catch (err) {
+      console.error('Erro ao carregar a fila completa:', err.message);
+    }
+  }
+
   document.querySelectorAll('.js-next-up').forEach((stripEl) => {
     stripEl.addEventListener('click', (e) => {
       const panel = stripEl.querySelector('.js-next-up-expand');
       if (!panel) return;
       const willOpen = panel.classList.contains('hidden');
       document.querySelectorAll('.js-next-up-expand').forEach((p) => p.classList.add('hidden'));
-      if (willOpen) {
-        populateExpandPanel(panel);
-        panel.classList.remove('hidden');
-      }
+      if (willOpen) openExpandPanel(panel);
       e.stopPropagation();
     });
   });
@@ -1437,7 +1455,7 @@
     });
   });
 
-  function renderNextUp(track, queue) {
+  function renderNextUp(track, queue, queueLength) {
     lastQueueSnapshot = queue || [];
     document.querySelectorAll('.js-next-up').forEach((el) => el.classList.toggle('hidden', !track));
     if (!track) return;
@@ -1452,8 +1470,7 @@
         artImg.style.display = 'none';
       }
     });
-    document.querySelectorAll('.js-next-up-expand:not(.hidden)').forEach(populateExpandPanel);
-    const extra = lastQueueSnapshot.length - 1;
+    const extra = (queueLength ?? lastQueueSnapshot.length) - 1;
     const countEl = document.getElementById('bottom-bar-next-up-count');
     if (countEl) countEl.textContent = extra > 0 ? `+${extra} na fila` : '';
   }
@@ -1476,15 +1493,18 @@
   const homeQueueSectionEl = document.getElementById('home-queue-section');
   const homeQueueTbodyEl = document.getElementById('home-queue-tbody');
 
-  function renderHomeQueuePreview(queue) {
-    homeQueueSectionEl.classList.toggle('hidden', !queue || queue.length === 0);
+  // Mostra so as 5 primeiras, mas o contador usa o total real da fila
+  // (queue aqui pode vir cortado - ver getStatus no backend).
+  function renderHomeQueuePreview(queue, queueLength) {
+    const total = queueLength ?? (queue ? queue.length : 0);
+    homeQueueSectionEl.classList.toggle('hidden', total === 0);
     const badge = document.getElementById('home-queue-count-badge');
-    if (!queue || queue.length === 0) {
+    if (!queue || total === 0) {
       homeQueueTbodyEl.innerHTML = '';
       badge.textContent = '';
       return;
     }
-    badge.textContent = `${queue.length} faixas`;
+    badge.textContent = `${total} faixas`;
     homeQueueTbodyEl.innerHTML = '';
     queue.slice(0, 5).forEach((track, index) => {
       homeQueueTbodyEl.appendChild(buildQueueRow(track, index, { onRemove: () => removeFromQueue(index) }));
@@ -1505,11 +1525,16 @@
   async function refreshStatus() {
     const guildId = settings.currentGuildId;
     if (!currentUser || !guildId) return;
+    // Roda a cada 1s: so pede a fila inteira quando a aba Fila esta aberta
+    // (a unica visao que lista tudo). Nas outras, vem so a previa.
+    const queueTabOpen = document.getElementById('tab-queue').classList.contains('active');
     try {
-      const status = await api(`/status?guildId=${encodeURIComponent(guildId)}`);
+      const status = await api(
+        `/status?guildId=${encodeURIComponent(guildId)}${queueTabOpen ? '&fullQueue=1' : ''}`
+      );
       applyStatus(status);
 
-      if (document.getElementById('tab-queue').classList.contains('active')) {
+      if (queueTabOpen) {
         renderQueue(status);
       }
     } catch (err) {

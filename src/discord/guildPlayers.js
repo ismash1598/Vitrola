@@ -9,7 +9,14 @@ const { spawn, execFileSync } = require('child_process');
 // plataforma), usa ele em vez do generico.
 function resolveFfmpegPath() {
   try {
-    const systemPath = execFileSync('which', ['ffmpeg']).toString().trim();
+    // stderr ignorado de proposito: quando nao acha, o "which" escreve a
+    // lista inteira do PATH no console - poluia o log toda vez que subia no
+    // Windows (onde o normal e nao ter ffmpeg no PATH mesmo).
+    const systemPath = execFileSync('which', ['ffmpeg'], {
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+      .toString()
+      .trim();
     if (systemPath) return systemPath;
   } catch {
     // sem ffmpeg no PATH do sistema - usa o do pacote mesmo
@@ -549,7 +556,16 @@ function createGuildPlayer() {
     return currentTrack.durationMs ? currentTrack.durationMs / 1000 : null;
   }
 
-  function getStatus() {
+  // Por padrao a fila vai CORTADA nas primeiras faixas. O front consulta o
+  // status a cada 1s, e a fila inteira (que pode ter 100+ faixas) eram
+  // dezenas de KB de JSON por segundo, por navegador aberto - sendo que o
+  // polling so precisa da faixa atual, do tamanho da fila e das primeiras
+  // faixas (previa "a seguir" e previa da tela inicial). Quem realmente
+  // precisa da fila toda (aba Fila, painel "a seguir" expandido) pede com
+  // fullQueue; queueLength vai sempre, pros contadores continuarem certos.
+  const QUEUE_PREVIEW_SIZE = 6;
+
+  function getStatus({ fullQueue = false } = {}) {
     return {
       current: currentTrack
         ? {
@@ -568,7 +584,8 @@ function createGuildPlayer() {
             paused: isPaused,
           }
         : null,
-      queue,
+      queue: fullQueue ? queue : queue.slice(0, QUEUE_PREVIEW_SIZE),
+      queueLength: queue.length,
       volume: currentVolume,
       autoplay: autoplayEnabled,
       connected: hasVoiceConnection(),

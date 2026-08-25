@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const low = require('lowdb');
-const FileSync = require('lowdb/adapters/FileSync');
+const AsyncFileAdapter = require('../db/asyncFileAdapter');
 
 // Sessoes persistem em disco (mesmo esquema das playlists) - antes ficavam
 // so em memoria e todo restart do servidor derrubava o login de todo mundo.
@@ -10,7 +10,9 @@ const FileSync = require('lowdb/adapters/FileSync');
 const dataDir = path.join(__dirname, '..', '..', 'data');
 fs.mkdirSync(dataDir, { recursive: true });
 
-const adapter = new FileSync(path.join(dataDir, 'sessions.json'));
+const adapter = new AsyncFileAdapter(path.join(dataDir, 'sessions.json'), {
+  defaultValue: { sessions: {} },
+});
 const db = low(adapter);
 db.defaults({ sessions: {} }).write();
 
