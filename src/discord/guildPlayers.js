@@ -94,6 +94,16 @@ function createGuildPlayer() {
       guildId: guild.id,
       adapterCreator: guild.voiceAdapterCreator,
     });
+
+    // Sem isso, uma falha de rede passageira (ex: DNS temporario tentando
+    // falar com o servidor de voz do Discord, comum em rede de celular)
+    // derrubava o processo Node INTEIRO - "error" sem quem escute vira
+    // excecao nao tratada em EventEmitter. So loga e deixa o
+    // @discordjs/voice tentar se reconectar sozinho.
+    connection.on('error', (err) => {
+      console.error('[player] erro na conexao de voz:', err.message);
+    });
+
     connection.subscribe(audioPlayer);
     await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
 
