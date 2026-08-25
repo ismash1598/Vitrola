@@ -27,7 +27,13 @@ class AsyncFileAdapter {
     this.filename = filename;
     this.defaultValue = defaultValue;
     this.writing = false;
+    // Ainda nao comecou a ser gravado.
     this.pending = null;
+    // Ja saiu do "pending" e esta sendo gravado agora. Precisa ficar
+    // guardado a parte: se o processo encerrar no meio dessa gravacao, o
+    // flushSync da saida nao teria mais o conteudo pra salvar e a alteracao
+    // se perderia.
+    this.inFlight = null;
     registerExitFlush(this);
   }
 
@@ -56,10 +62,13 @@ class AsyncFileAdapter {
       while (this.pending !== null) {
         const payload = this.pending;
         this.pending = null;
+        this.inFlight = payload;
         const tmp = `${this.filename}.tmp`;
         try {
           await fs.promises.writeFile(tmp, payload);
           await fs.promises.rename(tmp, this.filename);
+          // So limpa se ninguem passou na frente com conteudo mais novo.
+          if (this.inFlight === payload) this.inFlight = null;
         } catch (err) {
           console.error(`[db] falha ao gravar ${path.basename(this.filename)}:`, err.message);
         }
@@ -71,10 +80,15 @@ class AsyncFileAdapter {
 
   // Ultimo recurso, so na saida do processo: 'exit' do Node nao espera
   // promise nenhuma, entao aqui tem que ser sincrono mesmo.
+  //
+  // Considera tambem o que esta em voo: uma gravacao assincrona iniciada e
+  // nao concluida nao vai terminar depois que o processo sair, entao ela
+  // precisa ser refeita aqui de forma sincrona.
   flushSync() {
-    if (this.pending === null) return;
-    const payload = this.pending;
+    const payload = this.pending ?? this.inFlight;
+    if (payload == null) return;
     this.pending = null;
+    this.inFlight = null;
     try {
       fs.writeFileSync(this.filename, payload);
     } catch (err) {
