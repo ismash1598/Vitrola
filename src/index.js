@@ -13,10 +13,17 @@ app.use('/auth', authRoutes);
 app.use('/api', apiRoutes);
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// Garante que erros nas rotas da API voltem como JSON (nunca a pagina de erro HTML do Express)
+// Garante que erros nas rotas da API voltem como JSON (nunca a pagina de erro
+// HTML do Express). Erros previstos carregam o proprio status (ver
+// HttpError) - so o que NAO for previsto vira 500, e ai o stack vai pro log,
+// porque ai sim e bug de verdade e precisa ser investigado.
+// eslint-disable-next-line no-unused-vars -- o Express so reconhece o handler de erro com 4 argumentos
 app.use('/api', (err, req, res, next) => {
-  console.error('[api] erro:', err.message);
-  res.status(500).json({ error: err.message });
+  const status = err.status || 500;
+  if (status >= 500) {
+    console.error(`[api] erro nao tratado em ${req.method} ${req.originalUrl}:`, err.stack || err.message);
+  }
+  res.status(status).json({ error: err.message });
 });
 
 const port = process.env.PORT || 3000;

@@ -1,5 +1,6 @@
 const { PermissionFlagsBits } = require('discord.js');
 const { getPlayer } = require('./guildPlayers');
+const { forbidden, badRequest } = require('../httpError');
 
 // Servidores onde o bot esta E o usuario tambem esta (interseccao entre o
 // cache de guildas do bot e a lista de guildas do usuario, vinda do OAuth).
@@ -29,7 +30,7 @@ async function ensureVoiceForUser(client, guildId, userId) {
   if (botChannelId) {
     const voiceState = guild.voiceStates.cache.get(userId);
     if (voiceState?.channelId !== botChannelId) {
-      throw new Error('Você não está no mesmo canal de voz que o bot.');
+      throw forbidden('Você não está no mesmo canal de voz que o bot.');
     }
     return player;
   }
@@ -37,7 +38,7 @@ async function ensureVoiceForUser(client, guildId, userId) {
   const voiceState = guild.voiceStates.cache.get(userId);
   const channelId = voiceState?.channelId;
   if (!channelId) {
-    throw new Error('Entre em um canal de voz do Discord primeiro.');
+    throw badRequest('Entre em um canal de voz do Discord primeiro.');
   }
   await player.ensureConnected(guild, channelId);
   return player;
@@ -54,7 +55,7 @@ function requireSameVoiceChannel(client, guildId, userId, player) {
   const guild = client.guilds.cache.get(guildId);
   const voiceState = guild?.voiceStates.cache.get(userId);
   if (voiceState?.channelId !== botChannelId) {
-    throw new Error('Você não está no mesmo canal de voz que o bot.');
+    throw forbidden('Você não está no mesmo canal de voz que o bot.');
   }
 }
 

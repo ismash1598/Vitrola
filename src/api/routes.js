@@ -14,6 +14,8 @@ const playlists = require('../db/playlists');
 const history = require('../discord/history');
 const session = require('../discord/session');
 const { requireAuth } = require('./authMiddleware');
+const { badRequest, forbidden, notFound } = require('../httpError');
+const { sanitizeTrack } = require('./trackSchema');
 
 const router = express.Router();
 
@@ -21,17 +23,33 @@ function asyncRoute(handler) {
   return (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 }
 
-function requireGuildId(req, res) {
+// Middleware: valida o guildId e deixa req.guildId / req.player prontos.
+function withPlayer(req, res, next) {
   const guildId = req.body?.guildId || req.query?.guildId;
-  if (!guildId) {
-    res.status(400).json({ error: 'guildId e obrigatorio' });
-    return null;
-  }
+  if (!guildId) return next(badRequest('guildId e obrigatorio'));
   if (!isMutualGuild(bot.client, req.user.guildIds, guildId)) {
-    res.status(403).json({ error: 'Voce nao esta nesse servidor, ou o bot nao esta' });
-    return null;
+    return next(forbidden('Voce nao esta nesse servidor, ou o bot nao esta'));
   }
-  return guildId;
+  req.guildId = guildId;
+  req.player = getPlayer(guildId);
+  next();
+}
+
+// Middleware: so deixa passar quem esta no MESMO canal de voz que o bot.
+//
+// Antes isso era uma chamada solta no corpo de algumas rotas - e justamente
+// por ser opcional, /pause, /resume, /volume, /autoplay e /reset ficaram sem
+// nenhuma checagem: qualquer pessoa do servidor conseguia pausar ou resetar
+// a musica de quem estava no canal. Como middleware a protecao fica visivel
+// na propria declaracao da rota, entao da pra bater o olho e ver quais estao
+// protegidas (e "esquecer" vira uma omissao obvia, nao invisivel).
+function requireVoicePeer(req, res, next) {
+  try {
+    requireSameVoiceChannel(bot.client, req.guildId, req.user.id, req.player);
+    next();
+  } catch (err) {
+    next(err);
+  }
 }
 
 // ---- Sessao ----
@@ -76,149 +94,112 @@ router.use(requireAuth);
 // fullQueue=1 so quando o cliente realmente precisa da fila inteira (aba
 // Fila aberta, painel "a seguir" expandido). O polling normal recebe so uma
 // previa - ver comentario em getStatus.
-router.get('/status', (req, res) => {
-  const guildId = requireGuildId(req, res);
-  if (!guildId) return;
-  res.json(getPlayer(guildId).getStatus({ fullQueue: req.query.fullQueue === '1' }));
+// Sem requireVoicePeer de proposito: so leitura, e o front consulta isso a
+// cada segundo pra montar a tela mesmo antes de entrar num canal de voz.
+router.get('/status', withPlayer, (req, res) => {
+  res.json(req.player.getStatus({ fullQueue: req.query.fullQueue === '1' }));
 });
 
 // ---- Fila ----
 router.post(
   '/queue',
+  withPlayer,
   asyncRoute(async (req, res) => {
-    const guildId = requireGuildId(req, res);
-    if (!guildId) return;
-    const { track, playNext } = req.body;
-    if (!track) return res.status(400).json({ error: 'track e obrigatorio' });
+    // ensureVoiceForUser ja faz a checagem de canal aqui (e conecta o bot se
+    // for a primeira faixa), entao essa rota nao usa requireVoicePeer.
+    const track = sanitizeTrack(req.body.track);
 
     // Nunca interrompe o que esta tocando: so entra na fila (na frente, se
     // playNext) e comeca a tocar sozinha se nao havia nada rodando.
-    const player = await ensureVoiceForUser(bot.client, guildId, req.user.id);
-    player.enqueue(track, Boolean(playNext), req.user.id);
+    const player = await ensureVoiceForUser(bot.client, req.guildId, req.user.id);
+    player.enqueue(track, Boolean(req.body.playNext), req.user.id);
     history.recordHistory(req.user.id, track);
     res.json(player.getStatus());
   })
 );
 
-router.delete(
-  '/queue/:index',
-  asyncRoute(async (req, res) => {
-    const guildId = requireGuildId(req, res);
-    if (!guildId) return;
-    const player = getPlayer(guildId);
-    requireSameVoiceChannel(bot.client, guildId, req.user.id, player);
-    const ok = player.removeFromQueue(Number(req.params.index));
-    if (!ok) return res.status(404).json({ error: 'indice invalido' });
-    res.json(player.getStatus());
-  })
-);
-
-router.delete(
-  '/queue',
-  asyncRoute(async (req, res) => {
-    const guildId = requireGuildId(req, res);
-    if (!guildId) return;
-    const player = getPlayer(guildId);
-    requireSameVoiceChannel(bot.client, guildId, req.user.id, player);
-    player.clearQueue();
-    res.json(player.getStatus());
-  })
-);
-
-router.post(
-  '/queue/reorder',
-  asyncRoute(async (req, res) => {
-    const guildId = requireGuildId(req, res);
-    if (!guildId) return;
-    const player = getPlayer(guildId);
-    requireSameVoiceChannel(bot.client, guildId, req.user.id, player);
-    const { from, to } = req.body;
-    const ok = player.reorderQueue(Number(from), Number(to));
-    if (!ok) return res.status(400).json({ error: 'from/to invalidos' });
-    res.json(player.getStatus());
-  })
-);
-
-// ---- Controles de reproducao ----
-router.post('/pause', (req, res) => {
-  const guildId = requireGuildId(req, res);
-  if (!guildId) return;
-  const player = getPlayer(guildId);
-  player.pause();
-  res.json(player.getStatus());
+router.delete('/queue/:index', withPlayer, requireVoicePeer, (req, res) => {
+  const ok = req.player.removeFromQueue(Number(req.params.index));
+  if (!ok) throw notFound('indice invalido');
+  res.json(req.player.getStatus());
 });
 
-router.post('/resume', (req, res) => {
-  const guildId = requireGuildId(req, res);
-  if (!guildId) return;
-  const player = getPlayer(guildId);
-  player.resume();
-  res.json(player.getStatus());
+router.delete('/queue', withPlayer, requireVoicePeer, (req, res) => {
+  req.player.clearQueue();
+  res.json(req.player.getStatus());
+});
+
+router.post('/queue/reorder', withPlayer, requireVoicePeer, (req, res) => {
+  const { from, to } = req.body;
+  const ok = req.player.reorderQueue(Number(from), Number(to));
+  if (!ok) throw badRequest('from/to invalidos');
+  res.json(req.player.getStatus());
+});
+
+// ---- Controles de reproducao ----
+// Todas exigem estar no mesmo canal de voz que o bot (requireVoicePeer).
+router.post('/pause', withPlayer, requireVoicePeer, (req, res) => {
+  req.player.pause();
+  res.json(req.player.getStatus());
+});
+
+router.post('/resume', withPlayer, requireVoicePeer, (req, res) => {
+  req.player.resume();
+  res.json(req.player.getStatus());
 });
 
 router.post(
   '/skip',
+  withPlayer,
+  requireVoicePeer,
   asyncRoute(async (req, res) => {
-    const guildId = requireGuildId(req, res);
-    if (!guildId) return;
-    const player = getPlayer(guildId);
-    const status = player.getStatus();
-    if (!status.current) return res.status(400).json({ error: 'nada tocando' });
+    const status = req.player.getStatus();
+    if (!status.current) throw badRequest('nada tocando');
 
     const addedBy = status.current.track.addedBy;
     if (addedBy && addedBy !== req.user.id) {
-      const admin = await isGuildAdmin(bot.client, guildId, req.user.id);
+      const admin = await isGuildAdmin(bot.client, req.guildId, req.user.id);
       if (!admin) {
-        return res.status(403).json({ error: 'Só quem colocou essa música ou um administrador pode pular.' });
+        throw forbidden('Só quem colocou essa música ou um administrador pode pular.');
       }
     }
 
-    player.skip();
-    res.json(player.getStatus());
+    req.player.skip();
+    res.json(req.player.getStatus());
   })
 );
 
 router.post(
   '/seek',
+  withPlayer,
+  requireVoicePeer,
   asyncRoute(async (req, res) => {
-    const guildId = requireGuildId(req, res);
-    if (!guildId) return;
     const { seconds } = req.body;
-    if (typeof seconds !== 'number') return res.status(400).json({ error: 'seconds e obrigatorio' });
-    const player = getPlayer(guildId);
-    await player.seek(seconds);
-    res.json(player.getStatus());
+    if (typeof seconds !== 'number') throw badRequest('seconds e obrigatorio');
+    await req.player.seek(seconds);
+    res.json(req.player.getStatus());
   })
 );
 
-router.post('/volume', (req, res) => {
-  const guildId = requireGuildId(req, res);
-  if (!guildId) return;
+router.post('/volume', withPlayer, requireVoicePeer, (req, res) => {
   const { volume } = req.body;
-  if (typeof volume !== 'number') return res.status(400).json({ error: 'volume e obrigatorio' });
-  const player = getPlayer(guildId);
-  player.setVolume(volume);
-  res.json(player.getStatus());
+  if (typeof volume !== 'number') throw badRequest('volume e obrigatorio');
+  req.player.setVolume(volume);
+  res.json(req.player.getStatus());
 });
 
-router.post('/autoplay', (req, res) => {
-  const guildId = requireGuildId(req, res);
-  if (!guildId) return;
+router.post('/autoplay', withPlayer, requireVoicePeer, (req, res) => {
   const { enabled } = req.body;
-  if (typeof enabled !== 'boolean') return res.status(400).json({ error: 'enabled e obrigatorio' });
-  const player = getPlayer(guildId);
-  player.setAutoplay(enabled);
-  res.json(player.getStatus());
+  if (typeof enabled !== 'boolean') throw badRequest('enabled e obrigatorio');
+  req.player.setAutoplay(enabled);
+  res.json(req.player.getStatus());
 });
 
 // Botao de emergencia: desconecta o bot do canal de voz e para tudo, pra
 // desempacar quando ele trava.
-router.post('/reset', (req, res) => {
-  const guildId = requireGuildId(req, res);
-  if (!guildId) return;
-  const player = getPlayer(guildId);
-  player.forceReset();
-  res.json(player.getStatus());
+router.post('/reset', withPlayer, requireVoicePeer, (req, res) => {
+  req.player.forceReset();
+  res.json(req.player.getStatus());
 });
 
 // ---- Playlists ----
@@ -374,9 +355,7 @@ router.post('/playlists/:id/tracks', (req, res) => {
   if (!playlists.canEdit(playlist, req.user)) {
     return res.status(403).json({ error: 'so o dono pode editar essa playlist' });
   }
-  const { track } = req.body;
-  if (!track) return res.status(400).json({ error: 'track e obrigatorio' });
-  res.json(playlists.addTrack(req.params.id, track));
+  res.json(playlists.addTrack(req.params.id, sanitizeTrack(req.body.track)));
 });
 
 router.delete('/playlists/:id/tracks/:index', (req, res) => {
@@ -392,16 +371,16 @@ router.delete('/playlists/:id/tracks/:index', (req, res) => {
 
 router.post(
   '/playlists/:id/play',
+  withPlayer,
   asyncRoute(async (req, res) => {
-    const guildId = requireGuildId(req, res);
-    if (!guildId) return;
-
     const playlist = playlists.getPlaylist(req.params.id);
     if (!playlist || !playlists.canView(playlist, req.user)) {
-      return res.status(404).json({ error: 'playlist nao encontrada' });
+      throw notFound('playlist nao encontrada');
     }
 
-    const player = await ensureVoiceForUser(bot.client, guildId, req.user.id);
+    // ensureVoiceForUser cuida da checagem de canal (e conecta o bot se for
+    // a primeira faixa) - por isso essa rota nao usa requireVoicePeer.
+    const player = await ensureVoiceForUser(bot.client, req.guildId, req.user.id);
     player.playPlaylistNext(playlist.tracks, req.user.id);
     res.json(player.getStatus());
   })

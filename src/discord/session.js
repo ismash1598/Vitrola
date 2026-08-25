@@ -44,4 +44,25 @@ function deleteSession(token) {
   db.write();
 }
 
-module.exports = { createSession, getSession, deleteSession };
+// A lista de servidores do usuario e capturada no login (OAuth) e ficava
+// congelada pelos 90 dias da sessao - quem saisse de um servidor continuava
+// vendo as playlists "do servidor" dele por todo esse tempo. Isso permite
+// atualizar a lista depois (ver guildMembership.js).
+//
+// Atualiza TODAS as sessoes do mesmo usuario: ele pode estar logado no
+// celular e no PC ao mesmo tempo, e deixar so uma delas correta seria pior
+// que nao atualizar nenhuma (comportamento dependeria do dispositivo).
+function updateUserGuilds(userId, guildIds) {
+  const sessions = db.get('sessions').value();
+  let changed = false;
+  Object.values(sessions).forEach((entry) => {
+    if (entry.user?.id === userId) {
+      entry.user.guildIds = guildIds;
+      changed = true;
+    }
+  });
+  if (changed) db.write();
+  return changed;
+}
+
+module.exports = { createSession, getSession, deleteSession, updateUserGuilds };

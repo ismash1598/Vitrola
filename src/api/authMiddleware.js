@@ -1,4 +1,6 @@
 const session = require('../discord/session');
+const bot = require('../discord/bot');
+const { scheduleGuildRevalidation } = require('../discord/guildMembership');
 
 function requireAuth(req, res, next) {
   const token = req.header('x-session-token');
@@ -9,6 +11,9 @@ function requireAuth(req, res, next) {
   }
 
   req.user = user;
+  // Dispara e segue: nao espera resposta, so mantem a lista de servidores
+  // da sessao fresca com o tempo (ver guildMembership.js).
+  scheduleGuildRevalidation(bot.client, user);
   next();
 }
 
