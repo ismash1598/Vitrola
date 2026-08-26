@@ -92,7 +92,7 @@ function montarPlayer(opts = {}) {
 
   substituirModulo('@discordjs/voice', {
     createAudioPlayer: () => audioPlayer,
-    createAudioResource: () => ({ volume: { setVolume() {} }, playbackDuration: 0 }),
+    createAudioResource: () => ({ playbackDuration: 0 }),
     joinVoiceChannel: () => {
       const conn = new EventEmitter();
       conn.joinConfig = { channelId: 'canal-1' };
@@ -101,22 +101,36 @@ function montarPlayer(opts = {}) {
       return conn;
     },
     entersState: async () => {},
-    StreamType: { Raw: 'raw' },
+    StreamType: { Raw: 'raw', OggOpus: 'ogg/opus' },
     VoiceConnectionStatus: { Ready: 'ready' },
   });
 
   const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  async function findAudioForTrackFalso(track) {
+    chamadas.findAudio.push(track.name);
+    if (atrasoResolucaoMs) await espera(atrasoResolucaoMs);
+    return { videoUrl: `https://www.youtube.com/watch?v=${track.id}`, title: track.name, durationSec: 100 };
+  }
+
+  async function resolveDirectAudioUrlFalso(videoUrl) {
+    chamadas.resolveUrl.push(videoUrl);
+    if (atrasoResolucaoMs) await espera(atrasoResolucaoMs);
+    return `${videoUrl}&audio=1`;
+  }
+
   substituirModulo('../../src/youtube/youtubeSource', {
-    async findAudioForTrack(track) {
-      chamadas.findAudio.push(track.name);
-      if (atrasoResolucaoMs) await espera(atrasoResolucaoMs);
-      return { videoUrl: `https://www.youtube.com/watch?v=${track.id}`, title: track.name, durationSec: 100 };
-    },
-    async resolveDirectAudioUrl(videoUrl) {
-      chamadas.resolveUrl.push(videoUrl);
-      if (atrasoResolucaoMs) await espera(atrasoResolucaoMs);
-      return `${videoUrl}&audio=1`;
+    findAudioForTrack: findAudioForTrackFalso,
+    resolveDirectAudioUrl: resolveDirectAudioUrlFalso,
+    // Mesma logica do modulo de verdade: so busca o que ainda falta.
+    async resolveTrackAudio(track) {
+      if (!track._youtube) {
+        track._youtube = await findAudioForTrackFalso(track);
+      }
+      if (!track._audioUrl) {
+        track._audioUrl = await resolveDirectAudioUrlFalso(track._youtube.videoUrl);
+      }
+      return track;
     },
     async getMixQueue(videoId) {
       chamadas.getMix.push(videoId);

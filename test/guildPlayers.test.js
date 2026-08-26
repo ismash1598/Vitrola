@@ -219,3 +219,60 @@ test('a proxima faixa e adiantada enquanto a atual toca', async (t) => {
     'o audio da faixa b deveria ter sido resolvido antes dela tocar'
   );
 });
+
+// O volume virou um filtro do ffmpeg (nao mais inline), entao mudar o
+// volume agora reinicia o processo - mas o slider manda uma requisicao por
+// tique do arrasto. Sem o debounce, cada tique reiniciaria o audio.
+test('arrastar o volume so reinicia o audio uma vez, depois de parar', async (t) => {
+  const h = montarPlayer();
+  t.after(() => h.restaurar());
+
+  h.player.enqueue(faixa('a'));
+  await h.assentar(20);
+  const antes = h.processoAtual();
+
+  // Simula o arrasto: varios tiques em sequencia rapida.
+  h.player.setVolume(0.8);
+  h.player.setVolume(0.5);
+  h.player.setVolume(0.3);
+
+  assert.equal(
+    h.processoAtual(),
+    antes,
+    'nao deveria ter reiniciado o audio enquanto o volume ainda estava mudando'
+  );
+  assert.equal(h.player.getStatus().volume, 0.3, 'o valor exibido deve atualizar na hora, mesmo antes do reinicio');
+
+  await new Promise((r) => setTimeout(r, 300));
+
+  assert.notEqual(
+    h.processoAtual(),
+    antes,
+    'depois de parar de arrastar, o audio deveria ter reiniciado com o volume final'
+  );
+});
+
+// skip()/advanceQueue() incrementam playToken, entao o proprio myToken do
+// setVolume ja barraria um reinicio pendente depois de um skip - esse caso
+// nao precisa do clearTimeout em killCurrentProcess pra ficar seguro.
+// seek() e diferente: ele NAO incrementa playToken, entao e o unico jeito de
+// exercitar de verdade essa segunda camada de protecao.
+test('dar seek durante o arrasto do volume nao gera um reinicio extra depois', async (t) => {
+  const h = montarPlayer();
+  t.after(() => h.restaurar());
+
+  h.player.enqueue(faixa('a'));
+  await h.assentar(20);
+
+  h.player.setVolume(0.4); // agenda um reinicio pendente (so daria em 250ms)
+  await h.player.seek(30); // deveria cancelar aquele reinicio, nao empilhar outro
+  const depoisDoSeek = h.processoAtual();
+
+  await new Promise((r) => setTimeout(r, 300)); // tempo de sobra pro reinicio pendente disparar, se nao foi cancelado
+
+  assert.equal(
+    h.processoAtual(),
+    depoisDoSeek,
+    'o reinicio de volume agendado antes do seek nao deveria reiniciar o audio de novo depois'
+  );
+});

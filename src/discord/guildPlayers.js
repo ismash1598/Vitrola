@@ -34,9 +34,15 @@ const {
   VoiceConnectionStatus,
 } = require('@discordjs/voice');
 
+// Quantos ms esperar sem nenhuma mudanca de volume antes de reiniciar o
+// ffmpeg com o valor final (ver setVolume). O slider manda uma requisicao a
+// cada tique do arrasto - sem essa espera, cada pixel arrastado reiniciaria
+// o processo de audio, o que soaria muito pior do que um pequeno atraso pra
+// o volume "assentar" depois que o usuario solta o controle.
+const VOLUME_RESTART_DEBOUNCE_MS = 250;
+
 const {
-  findAudioForTrack,
-  resolveDirectAudioUrl,
+  resolveTrackAudio,
   getMixQueue,
   extractVideoId,
   parseYoutubeTitle,
@@ -58,6 +64,7 @@ function createGuildPlayer() {
   let offsetBase = 0;
   let isPaused = true;
   let currentVolume = 1;
+  let volumeRestartTimer = null;
 
   let autoplayEnabled = true;
   const recentlyPlayedVideoIds = [];
@@ -181,6 +188,10 @@ function createGuildPlayer() {
   // decide se avanca sozinho ou nao - matar aqui so precisa acontecer, sem
   // mais nenhuma flag pra coordenar.
   function killCurrentProcess() {
+    // Qualquer encerramento "de verdade" (skip, seek, avanco, reset) invalida
+    // um reinicio de volume pendente - sem isso, ele reiniciaria de novo por
+    // cima do que acabou de comecar (ver setVolume).
+    clearTimeout(volumeRestartTimer);
     if (currentProcess) {
       currentProcess.kill('SIGKILL');
       currentProcess = null;
@@ -227,6 +238,18 @@ function createGuildPlayer() {
   }
 
   async function startFfmpegAndPlay(audioUrl, offsetSeconds) {
+    // O audio do YouTube ja vem em opus (ver resolveTrackAudio) - antes,
+    // ffmpeg decodificava tudo pra PCM cru e o @discordjs/voice recodificava
+    // de volta pra opus em JS puro (opusscript), rodando 50x por segundo sem
+    // parar. Isso e o gasto de CPU mais caro do bot em hardware fraco (ex:
+    // celular). Pedindo pro proprio ffmpeg (em C nativo, libopus) entregar
+    // opus pronto, o @discordjs/voice so repassa os pacotes - sem recodificar
+    // nada em JS.
+    //
+    // Custo dessa troca: o ajuste de volume nao pode mais ser inline (isso
+    // so funciona em PCM cru) - agora e um filtro do proprio ffmpeg, aplicado
+    // aqui embutido no comando. Mudar o volume precisa reiniciar esse
+    // processo (ver setVolume).
     const args = [
       '-reconnect', '1',
       '-reconnect_streamed', '1',
@@ -235,9 +258,12 @@ function createGuildPlayer() {
       '-i', audioUrl,
       '-analyzeduration', '0',
       '-loglevel', 'error',
-      '-f', 's16le',
+      '-vn',
+      '-af', `volume=${currentVolume}`,
+      '-c:a', 'libopus',
       '-ar', '48000',
       '-ac', '2',
+      '-f', 'opus',
       'pipe:1',
     ];
 
@@ -277,10 +303,8 @@ function createGuildPlayer() {
     });
 
     const resource = createAudioResource(ffmpeg.stdout, {
-      inputType: StreamType.Raw,
-      inlineVolume: true,
+      inputType: StreamType.OggOpus,
     });
-    resource.volume.setVolume(currentVolume);
     currentResource = resource;
 
     offsetBase = offsetSeconds;
@@ -315,10 +339,7 @@ function createGuildPlayer() {
       prefetchingTracks.add(next);
       (async () => {
         try {
-          if (!next._youtube) {
-            next._youtube = await findAudioForTrack(next);
-          }
-          next._audioUrl = await resolveDirectAudioUrl(next._youtube.videoUrl);
+          await resolveTrackAudio(next);
         } catch (err) {
           console.error(`[player] falha ao pre-buscar audio de "${next.name}":`, err.message);
         } finally {
@@ -345,7 +366,7 @@ function createGuildPlayer() {
         try {
           const track = await buildAutoplayTrack();
           if (track) {
-            track._audioUrl = await resolveDirectAudioUrl(track._youtube.videoUrl);
+            await resolveTrackAudio(track);
             prefetchedAutoplay = track;
             prefetchedAutoplayBasedOn = lastVideoId;
           }
@@ -375,10 +396,7 @@ function createGuildPlayer() {
     if (!track) return;
 
     if (!track._audioUrl) {
-      if (!track._youtube) {
-        track._youtube = await findAudioForTrack(track);
-      }
-      track._audioUrl = await resolveDirectAudioUrl(track._youtube.videoUrl);
+      await resolveTrackAudio(track);
     }
 
     if (myToken !== undefined && myToken !== playToken) return;
@@ -535,9 +553,26 @@ function createGuildPlayer() {
 
   function setVolume(volume) {
     currentVolume = Math.min(2, Math.max(0, volume));
-    if (currentResource) {
-      currentResource.volume.setVolume(currentVolume);
-    }
+    if (!currentTrack) return;
+
+    // O volume agora e um filtro do proprio ffmpeg (ver startFfmpegAndPlay),
+    // entao aplicar um valor novo exige reiniciar o processo - o audio
+    // continua exatamente de onde parou. Espera um tempo sem mudanca (ver
+    // VOLUME_RESTART_DEBOUNCE_MS) pra nao reiniciar a cada tique do arrasto
+    // do slider.
+    const myToken = playToken;
+    clearTimeout(volumeRestartTimer);
+    volumeRestartTimer = setTimeout(() => {
+      // Confere de novo na hora de disparar: se um skip/seek/avanco de
+      // verdade aconteceu nesse meio-tempo, currentProcess ja mudou (ou
+      // sumiu) e esse reinicio ficou obsoleto - nao faz nada.
+      if (!currentTrack || !currentProcess || myToken !== playToken) return;
+      const elapsed = computeElapsedSeconds();
+      killCurrentProcess();
+      playCurrentAtOffset(elapsed, myToken).catch((err) => {
+        console.error('[player] falha ao aplicar novo volume:', err.message);
+      });
+    }, VOLUME_RESTART_DEBOUNCE_MS);
   }
 
   function setAutoplay(enabled) {

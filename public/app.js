@@ -1543,9 +1543,28 @@
   }
 
   // ---------- Loop de atualização ----------
-  // Poll completo (rede) 1x/s. Entre um poll e outro, a barra de progresso e
-  // animada localmente (sem rede) pra correr suave em vez de pular de 1 em 1s.
-  setInterval(refreshStatus, 1000);
+  // Poll completo (rede) 1x/s enquanto algo esta tocando - entre um poll e
+  // outro, a barra de progresso e animada localmente (sem rede) pra correr
+  // suave em vez de pular de 1 em 1s. Com nada tocando (ou pausado), 1x/s e
+  // desperdicio: cai pra 5s. E com a aba em segundo plano, ninguem esta
+  // olhando pra barra de progresso mesmo - para de todo, e retoma na hora
+  // que a aba volta a ficar visivel.
+  let statusPollTimer = null;
+  function scheduleNextStatusPoll() {
+    clearTimeout(statusPollTimer);
+    if (document.hidden) return;
+    const delay = localIsPlaying ? 1000 : 5000;
+    statusPollTimer = setTimeout(async () => {
+      await refreshStatus();
+      scheduleNextStatusPoll();
+    }, delay);
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    refreshStatus();
+    scheduleNextStatusPoll();
+  });
+  scheduleNextStatusPoll();
 
   setInterval(() => {
     if (isDraggingProgress || !localIsPlaying || !localDuration) return;

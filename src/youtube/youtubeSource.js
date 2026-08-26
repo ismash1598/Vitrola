@@ -1,5 +1,18 @@
 const ytdlp = require('yt-dlp-exec');
 
+// Escolhe o melhor formato so-audio dentre os que o yt-dlp lista, com o
+// mesmo criterio que 'bestaudio' usaria (maior bitrate). Confirmado na
+// pratica que o resultado e equivalente ao de uma segunda chamada dedicada
+// (mesmo format_id, url igualmente valida) - so custa mais uma resolucao
+// desnecessaria pro yt-dlp, que sobe um processo Python inteiro por vez.
+function pickBestAudioUrl(info) {
+  const audios = (info.formats || []).filter(
+    (f) => f.acodec && f.acodec !== 'none' && (!f.vcodec || f.vcodec === 'none') && f.url
+  );
+  if (!audios.length) return null;
+  return audios.sort((a, b) => (b.abr || 0) - (a.abr || 0))[0].url;
+}
+
 // Busca no YouTube o video que melhor corresponde a faixa do Spotify
 // (nome da musica + artistas). Usa yt-dlp (binario mantido ativamente e
 // atualizado com frequencia) em vez de bibliotecas JS como ytdl-core/play-dl,
@@ -7,9 +20,10 @@ const ytdlp = require('yt-dlp-exec');
 async function findAudioForTrack(track) {
   const query = `${track.name} ${track.artists.join(' ')}`;
 
+  // Sem skipDownload: precisamos da lista de formats (com url) que vem
+  // junto do dumpJson - e assim que evitamos a segunda chamada de resolucao.
   const info = await ytdlp(`ytsearch1:${query}`, {
     dumpJson: true,
-    skipDownload: true,
     noWarnings: true,
   });
 
@@ -21,11 +35,14 @@ async function findAudioForTrack(track) {
     videoUrl: info.webpage_url,
     title: info.title,
     durationSec: info.duration,
+    _resolvedAudioUrl: pickBestAudioUrl(info),
   };
 }
 
-// Resolve a URL direta (audio-only) para uso com ffmpeg. Expira depois de
-// algumas horas, entao e resolvida sob demanda, na hora de tocar.
+// Resolve a URL direta (audio-only) para uso com ffmpeg. So chamada quando
+// _youtube veio de outro lugar que nao a busca acima (ex: hint explicito do
+// cliente) e ainda nao tem uma url resolvida. Expira depois de algumas
+// horas, entao so e chamada sob demanda, na hora de tocar.
 async function resolveDirectAudioUrl(videoUrl) {
   const url = await ytdlp(videoUrl, {
     format: 'bestaudio',
@@ -38,6 +55,21 @@ async function resolveDirectAudioUrl(videoUrl) {
   }
 
   return url.trim();
+}
+
+// Garante que a faixa tenha _youtube e _audioUrl resolvidos, evitando a
+// segunda chamada ao yt-dlp sempre que a busca ja trouxe a url pronta.
+// Usado nos 3 lugares que precisavam resolver audio (tocar, pre-buscar
+// proxima faixa, pre-buscar autoplay) - antes cada um repetia o mesmo
+// par de ifs.
+async function resolveTrackAudio(track) {
+  if (!track._youtube) {
+    track._youtube = await findAudioForTrack(track);
+  }
+  if (!track._audioUrl) {
+    track._audioUrl = track._youtube._resolvedAudioUrl || (await resolveDirectAudioUrl(track._youtube.videoUrl));
+  }
+  return track;
 }
 
 function extractVideoId(url) {
@@ -162,6 +194,7 @@ async function getYoutubePlaylist(playlistId, limit = 200) {
 module.exports = {
   findAudioForTrack,
   resolveDirectAudioUrl,
+  resolveTrackAudio,
   getMixQueue,
   extractVideoId,
   parseYoutubeTitle,
