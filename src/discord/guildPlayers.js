@@ -237,7 +237,7 @@ function createGuildPlayer() {
     }
   }
 
-  async function startFfmpegAndPlay(audioUrl, offsetSeconds) {
+  async function startFfmpegAndPlay(audioUrl, offsetSeconds, audioCodec) {
     // O audio do YouTube ja vem em opus (ver resolveTrackAudio) - antes,
     // ffmpeg decodificava tudo pra PCM cru e o @discordjs/voice recodificava
     // de volta pra opus em JS puro (opusscript), rodando 50x por segundo sem
@@ -250,6 +250,18 @@ function createGuildPlayer() {
     // so funciona em PCM cru) - agora e um filtro do proprio ffmpeg, aplicado
     // aqui embutido no comando. Mudar o volume precisa reiniciar esse
     // processo (ver setVolume).
+    //
+    // Enquanto o volume estiver no padrao (1), nao ha nenhum filtro pra
+    // aplicar - e a fonte ja e opus na maioria das faixas (formato de audio
+    // de maior bitrate do YouTube). Nesse caso da pra pedir pro ffmpeg so
+    // REMUXAR (-c:a copy: trocar o container, sem decodificar nem
+    // recodificar nada) em vez de decodificar+recodificar um audio que ja
+    // estava pronto - o trabalho de codec cai a praticamente zero pelo tempo
+    // que o volume ficar no padrao. So volta a decodificar/recodificar
+    // quando alguem realmente muda o volume, ou quando a fonte nao e opus
+    // (raro, videos antigos que so tem AAC como bestaudio).
+    const canStreamCopy = currentVolume === 1 && audioCodec === 'opus';
+
     const args = [
       '-reconnect', '1',
       '-reconnect_streamed', '1',
@@ -259,10 +271,9 @@ function createGuildPlayer() {
       '-analyzeduration', '0',
       '-loglevel', 'error',
       '-vn',
-      '-af', `volume=${currentVolume}`,
-      '-c:a', 'libopus',
-      '-ar', '48000',
-      '-ac', '2',
+      ...(canStreamCopy
+        ? ['-c:a', 'copy']
+        : ['-af', `volume=${currentVolume}`, '-c:a', 'libopus', '-ar', '48000', '-ac', '2']),
       '-f', 'opus',
       'pipe:1',
     ];
@@ -403,7 +414,7 @@ function createGuildPlayer() {
 
     rememberPlayedVideoId(extractVideoId(track._youtube.videoUrl));
 
-    await startFfmpegAndPlay(track._audioUrl, offsetSeconds);
+    await startFfmpegAndPlay(track._audioUrl, offsetSeconds, track._youtube.audioCodec);
   }
 
   // Avanca para a proxima faixa da fila (ou autoplay, se a fila estiver

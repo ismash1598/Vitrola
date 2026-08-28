@@ -1,16 +1,27 @@
 const ytdlp = require('yt-dlp-exec');
 
+// Forca o "cliente" que o yt-dlp finge ser ao falar com o YouTube. O cliente
+// padrao (web) as vezes exige rodar um interpretador JS pra decifrar a
+// assinatura (nsig) de cada formato - gasto de CPU real em toda busca/
+// resolucao, notavel em hardware fraco. O cliente Android normalmente nao
+// exige essa etapa, entao pulamos ela.
+const ANDROID_CLIENT_ARGS = {
+  extractorArgs: 'youtube:player_client=android',
+};
+
 // Escolhe o melhor formato so-audio dentre os que o yt-dlp lista, com o
 // mesmo criterio que 'bestaudio' usaria (maior bitrate). Confirmado na
 // pratica que o resultado e equivalente ao de uma segunda chamada dedicada
 // (mesmo format_id, url igualmente valida) - so custa mais uma resolucao
 // desnecessaria pro yt-dlp, que sobe um processo Python inteiro por vez.
-function pickBestAudioUrl(info) {
+// Devolve o formato inteiro (nao so a url): o codec importa pra decidir se
+// da pra so remuxar o audio sem recodificar (ver guildPlayers.js).
+function pickBestAudio(info) {
   const audios = (info.formats || []).filter(
     (f) => f.acodec && f.acodec !== 'none' && (!f.vcodec || f.vcodec === 'none') && f.url
   );
   if (!audios.length) return null;
-  return audios.sort((a, b) => (b.abr || 0) - (a.abr || 0))[0].url;
+  return audios.sort((a, b) => (b.abr || 0) - (a.abr || 0))[0];
 }
 
 // Busca no YouTube o video que melhor corresponde a faixa do Spotify
@@ -25,17 +36,20 @@ async function findAudioForTrack(track) {
   const info = await ytdlp(`ytsearch1:${query}`, {
     dumpJson: true,
     noWarnings: true,
+    ...ANDROID_CLIENT_ARGS,
   });
 
   if (!info || !info.webpage_url) {
     throw new Error(`Nenhum video encontrado no YouTube para "${query}"`);
   }
 
+  const best = pickBestAudio(info);
   return {
     videoUrl: info.webpage_url,
     title: info.title,
     durationSec: info.duration,
-    _resolvedAudioUrl: pickBestAudioUrl(info),
+    _resolvedAudioUrl: best?.url || null,
+    audioCodec: best?.acodec || null,
   };
 }
 
@@ -44,17 +58,18 @@ async function findAudioForTrack(track) {
 // cliente) e ainda nao tem uma url resolvida. Expira depois de algumas
 // horas, entao so e chamada sob demanda, na hora de tocar.
 async function resolveDirectAudioUrl(videoUrl) {
-  const url = await ytdlp(videoUrl, {
+  const info = await ytdlp(videoUrl, {
     format: 'bestaudio',
-    getUrl: true,
+    dumpJson: true,
     noWarnings: true,
+    ...ANDROID_CLIENT_ARGS,
   });
 
-  if (!url) {
+  if (!info || !info.url) {
     throw new Error(`Nenhuma URL de audio encontrada para ${videoUrl}`);
   }
 
-  return url.trim();
+  return { url: info.url.trim(), audioCodec: info.acodec || null };
 }
 
 // Garante que a faixa tenha _youtube e _audioUrl resolvidos, evitando a
@@ -67,7 +82,13 @@ async function resolveTrackAudio(track) {
     track._youtube = await findAudioForTrack(track);
   }
   if (!track._audioUrl) {
-    track._audioUrl = track._youtube._resolvedAudioUrl || (await resolveDirectAudioUrl(track._youtube.videoUrl));
+    if (track._youtube._resolvedAudioUrl) {
+      track._audioUrl = track._youtube._resolvedAudioUrl;
+    } else {
+      const resolved = await resolveDirectAudioUrl(track._youtube.videoUrl);
+      track._audioUrl = resolved.url;
+      track._youtube.audioCodec = resolved.audioCodec;
+    }
   }
   return track;
 }
@@ -107,6 +128,7 @@ async function getMixQueue(videoId, limit = 10) {
       dumpJson: true,
       noWarnings: true,
       playlistEnd: limit + 1,
+      ...ANDROID_CLIENT_ARGS,
     }
   );
 
@@ -150,6 +172,7 @@ async function getYoutubePlaylist(playlistId, limit = 200) {
       dumpJson: true,
       noWarnings: true,
       playlistEnd: limit,
+      ...ANDROID_CLIENT_ARGS,
     }
   );
 
