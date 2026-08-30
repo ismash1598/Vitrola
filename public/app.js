@@ -332,6 +332,20 @@
     return div.innerHTML;
   }
 
+  // escapeHtml() NAO escapa aspas (serializacao de texto normal nao precisa
+  // disso) - por isso e inseguro pra montar atributo tipo src="${...}". Essa
+  // aqui escapa tambem aspas simples/duplas, pra usar sempre que um valor
+  // (principalmente URL vinda do backend) entrar dentro de um atributo HTML
+  // montado via template string (ver F1 da auditoria de seguranca).
+  function escapeAttr(str) {
+    return String(str ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
   // ---------- Acesso rápido (tela inicial da aba Buscar) ----------
   const quickAccessEl = document.getElementById('quick-access');
   const historySectionEl = document.getElementById('history-section');
@@ -370,7 +384,7 @@
 
   function mediaArtHtml(title, art, className) {
     if (art) {
-      return `<div class="${className}"><img src="${art}" alt="" /></div>`;
+      return `<div class="${className}"><img src="${escapeAttr(art)}" alt="" /></div>`;
     }
     const [from, to] = PLACEHOLDER_GRADIENTS[hashStr(title || '?') % PLACEHOLDER_GRADIENTS.length];
     const letter = escapeHtml((title || '?').trim().charAt(0).toUpperCase() || '?');
@@ -1016,9 +1030,9 @@
     const coverEl = document.getElementById('playlist-hero-cover');
     const artUrls = pl.tracks.map((t) => t.albumArt).filter(Boolean).slice(0, 4);
     if (artUrls.length >= 4) {
-      coverEl.innerHTML = `<div class="pl-hero-cover-grid">${artUrls.map((url) => `<img src="${url}" alt="" />`).join('')}</div>`;
+      coverEl.innerHTML = `<div class="pl-hero-cover-grid">${artUrls.map((url) => `<img src="${escapeAttr(url)}" alt="" />`).join('')}</div>`;
     } else if (artUrls.length > 0) {
-      coverEl.innerHTML = `<img src="${artUrls[0]}" alt="" />`;
+      coverEl.innerHTML = `<img src="${escapeAttr(artUrls[0])}" alt="" />`;
     } else {
       const [fromColor, toColor] = PLACEHOLDER_GRADIENTS[hashStr(pl.name) % PLACEHOLDER_GRADIENTS.length];
       const letter = escapeHtml((pl.name || '?').trim().charAt(0).toUpperCase() || '?');

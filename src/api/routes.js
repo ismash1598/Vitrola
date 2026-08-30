@@ -15,7 +15,7 @@ const history = require('../discord/history');
 const session = require('../discord/session');
 const { requireAuth } = require('./authMiddleware');
 const { badRequest, forbidden, notFound } = require('../httpError');
-const { sanitizeTrack } = require('./trackSchema');
+const { sanitizeTrack, sanitizeTrackList } = require('./trackSchema');
 
 const router = express.Router();
 
@@ -248,13 +248,22 @@ router.post(
       return res.status(400).json({ error: 'Essa playlist esta vazia ou nao foi possivel ler as faixas' });
     }
 
+    // As faixas importadas nao passam pela UI (vem direto do Spotify), mas
+    // precisam do mesmo allowlist que qualquer outra faixa gravada no banco
+    // (ver sanitizeTrackList) - senao ficam sem o limite de tamanho e a
+    // normalizacao de URL que as demais rotas ja aplicam.
+    const tracks = sanitizeTrackList(imported.tracks);
+    if (!tracks.length) {
+      return res.status(400).json({ error: 'Nao foi possivel ler nenhuma faixa valida dessa playlist' });
+    }
+
     const playlist = playlists.createPlaylist({
       name: customName || imported.name || 'Playlist importada',
       visibility,
       guildId,
       ownerId: req.user.id,
       ownerName: req.user.username,
-      tracks: imported.tracks,
+      tracks,
     });
     res.status(201).json(playlist);
   })
@@ -284,13 +293,21 @@ router.post(
       return res.status(400).json({ error: 'Essa playlist esta vazia ou nao foi possivel ler as faixas' });
     }
 
+    // Titulo de video no YouTube e definido livremente por quem fez o
+    // upload - sem passar pelo mesmo allowlist das demais rotas, campos
+    // gigantes ou URLs fora do esquema http(s) iam parar direto no banco.
+    const tracks = sanitizeTrackList(imported.tracks);
+    if (!tracks.length) {
+      return res.status(400).json({ error: 'Nao foi possivel ler nenhuma faixa valida dessa playlist' });
+    }
+
     const playlist = playlists.createPlaylist({
       name: customName || imported.name || 'Playlist importada',
       visibility,
       guildId,
       ownerId: req.user.id,
       ownerName: req.user.username,
-      tracks: imported.tracks,
+      tracks,
     });
     res.status(201).json(playlist);
   })

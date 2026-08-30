@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { sanitizeTrack } = require('../src/api/trackSchema');
+const { sanitizeTrack, sanitizeTrackList } = require('../src/api/trackSchema');
 
 test('mantem uma faixa normal do Spotify intacta', () => {
   const entrada = {
@@ -67,6 +67,20 @@ test('recusa URL que nao seja http(s) nos campos de imagem/link', () => {
   assert.equal(saida.spotifyUrl, null);
 });
 
+// F1 da auditoria de seguranca: httpUrl() devolvia o texto ORIGINAL da URL,
+// entao uma aspa solta no path/query sobrevivia intacta e quebrava pra fora
+// de um atributo src="${url}" no front (XSS armazenado). Agora devolve a
+// URL normalizada pelo proprio WHATWG URL, que escapa esse tipo de
+// caractere.
+test('normaliza a URL de imagem em vez de devolver o texto original (evita quebra de atributo HTML)', () => {
+  const saida = sanitizeTrack({
+    name: 'A',
+    albumArt: 'https://evil.example/x?y=" onerror="alert(1)',
+  });
+  assert.ok(saida.albumArt, 'deveria aceitar a URL (esquema http/https valido)');
+  assert.ok(!saida.albumArt.includes('"'), `nao deveria sobrar aspa literal: ${saida.albumArt}`);
+});
+
 test('descarta campos nao declarados em vez de grava-los', () => {
   const saida = sanitizeTrack({ name: 'A', lixo: 'x', outroCampo: { grande: 'y' } });
   assert.equal(saida.lixo, undefined);
@@ -86,6 +100,41 @@ test('normaliza duracao invalida para null', () => {
   assert.equal(sanitizeTrack({ name: 'A', durationMs: -5 }).durationMs, null);
   assert.equal(sanitizeTrack({ name: 'A', durationMs: 'abc' }).durationMs, null);
   assert.equal(sanitizeTrack({ name: 'A', durationMs: NaN }).durationMs, null);
+});
+
+// F2 da auditoria de seguranca: /playlists/import-spotify e /import-youtube
+// gravavam as faixas importadas direto no banco, sem passar por
+// sanitizeTrack() - diferente de toda outra rota que grava faixa. Titulo de
+// video no YouTube e definido livremente por quem fez upload.
+test('sanitizeTrackList aplica o allowlist em cada faixa de uma playlist importada', () => {
+  const importadas = [
+    { name: 'Musica valida', artists: ['Artista'], albumArt: 'https://i.scdn.co/x' },
+    { name: '', artists: ['sem nome, devia ser descartada'] },
+    { artists: ['tambem sem nome'] },
+  ];
+  const saida = sanitizeTrackList(importadas);
+  assert.equal(saida.length, 1, 'so a faixa com nome valido deveria sobrar');
+  assert.equal(saida[0].name, 'Musica valida');
+});
+
+test('sanitizeTrackList preserva a dica _youtube das faixas importadas do YouTube', () => {
+  const saida = sanitizeTrackList([
+    {
+      id: 'yt:abc123',
+      name: 'Musica do YouTube',
+      artists: [],
+      _youtube: { videoUrl: 'https://www.youtube.com/watch?v=abc123', title: 'Titulo bruto', durationSec: 210 },
+    },
+  ]);
+  assert.equal(saida.length, 1);
+  assert.equal(saida[0]._youtube.videoUrl, 'https://www.youtube.com/watch?v=abc123');
+  assert.equal(saida[0]._youtube.durationSec, 210);
+});
+
+test('sanitizeTrackList nao derruba a lista inteira por causa de uma faixa invalida', () => {
+  assert.deepEqual(sanitizeTrackList('nao e uma lista'), []);
+  assert.deepEqual(sanitizeTrackList(null), []);
+  assert.deepEqual(sanitizeTrackList(undefined), []);
 });
 
 test('rejeita entrada que nao e uma faixa utilizavel', () => {

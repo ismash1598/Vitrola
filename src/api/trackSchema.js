@@ -28,7 +28,13 @@ function httpUrl(value) {
   if (!raw) return null;
   try {
     const parsed = new URL(raw);
-    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? raw : null;
+    // Devolve parsed.href (a versao normalizada pelo proprio WHATWG URL), NAO
+    // o raw original: o parser escapa caracteres perigosos pra atributo HTML
+    // (aspas, "<", ">") que podem estar soltos no path/query de uma URL
+    // http(s) "valida" - devolver o raw permitia quebrar pra fora de um
+    // src="${url}" quando essa URL fosse interpolada no front (ver F1 da
+    // auditoria de seguranca).
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : null;
   } catch {
     return null;
   }
@@ -93,4 +99,21 @@ function sanitizeTrack(raw) {
   };
 }
 
-module.exports = { sanitizeTrack };
+// Usado ao importar uma playlist inteira (Spotify/YouTube): aplica o mesmo
+// allowlist de sanitizeTrack() em cada faixa, descartando silenciosamente so
+// as que vierem invalidas (ex: titulo que ficou vazio depois de limpar o
+// titulo bruto do YouTube) em vez de derrubar o import inteiro por causa de
+// UMA faixa ruim no meio de uma playlist com centenas.
+function sanitizeTrackList(tracks) {
+  return (Array.isArray(tracks) ? tracks : [])
+    .map((t) => {
+      try {
+        return sanitizeTrack(t);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+}
+
+module.exports = { sanitizeTrack, sanitizeTrackList };
