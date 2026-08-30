@@ -1,14 +1,5 @@
 const ytdlp = require('yt-dlp-exec');
 
-// Forca o "cliente" que o yt-dlp finge ser ao falar com o YouTube. O cliente
-// padrao (web) as vezes exige rodar um interpretador JS pra decifrar a
-// assinatura (nsig) de cada formato - gasto de CPU real em toda busca/
-// resolucao, notavel em hardware fraco. O cliente Android normalmente nao
-// exige essa etapa, entao pulamos ela.
-const ANDROID_CLIENT_ARGS = {
-  extractorArgs: 'youtube:player_client=android',
-};
-
 // Escolhe o melhor formato so-audio dentre os que o yt-dlp lista, com o
 // mesmo criterio que 'bestaudio' usaria (maior bitrate). Confirmado na
 // pratica que o resultado e equivalente ao de uma segunda chamada dedicada
@@ -36,7 +27,6 @@ async function findAudioForTrack(track) {
   const info = await ytdlp(`ytsearch1:${query}`, {
     dumpJson: true,
     noWarnings: true,
-    ...ANDROID_CLIENT_ARGS,
   });
 
   if (!info || !info.webpage_url) {
@@ -62,7 +52,6 @@ async function resolveDirectAudioUrl(videoUrl) {
     format: 'bestaudio',
     dumpJson: true,
     noWarnings: true,
-    ...ANDROID_CLIENT_ARGS,
   });
 
   if (!info || !info.url) {
@@ -128,7 +117,6 @@ async function getMixQueue(videoId, limit = 10) {
       dumpJson: true,
       noWarnings: true,
       playlistEnd: limit + 1,
-      ...ANDROID_CLIENT_ARGS,
     }
   );
 
@@ -172,7 +160,6 @@ async function getYoutubePlaylist(playlistId, limit = 200) {
       dumpJson: true,
       noWarnings: true,
       playlistEnd: limit,
-      ...ANDROID_CLIENT_ARGS,
     }
   );
 
