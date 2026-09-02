@@ -65,4 +65,35 @@ function updateUserGuilds(userId, guildIds) {
   return changed;
 }
 
-module.exports = { createSession, getSession, deleteSession, updateUserGuilds };
+// Ticket de uso unico e vida curta (60s), so pra autenticar o endpoint de
+// audio ao vivo (/api/listen). Esse endpoint e o "src" de uma tag <audio> -
+// o navegador nao manda headers customizados nesse tipo de requisicao, entao
+// nao da pra usar o x-session-token normal (que fica 90 dias valido) ali.
+// Fica so em memoria (nao precisa sobreviver a um restart do processo, a
+// janela de vida e curta demais pra importar).
+const streamTickets = new Map();
+const STREAM_TICKET_TTL_MS = 60 * 1000;
+
+function createStreamTicket(user) {
+  const ticket = crypto.randomBytes(16).toString('hex');
+  streamTickets.set(ticket, { user, expiresAt: Date.now() + STREAM_TICKET_TTL_MS });
+  return ticket;
+}
+
+// So pode ser usado uma vez: ja apaga na leitura, mesmo se estiver expirado.
+function consumeStreamTicket(ticket) {
+  const entry = streamTickets.get(ticket);
+  if (!entry) return null;
+  streamTickets.delete(ticket);
+  if (entry.expiresAt < Date.now()) return null;
+  return entry.user;
+}
+
+module.exports = {
+  createSession,
+  getSession,
+  deleteSession,
+  updateUserGuilds,
+  createStreamTicket,
+  consumeStreamTicket,
+};

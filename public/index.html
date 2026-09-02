@@ -702,6 +702,17 @@
               <span class="settings-toggle-track"></span>
             </label>
           </div>
+          <div class="settings-divider"></div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-title">Ouvir pelo navegador</div>
+              <div class="settings-row-sub">Escuta o áudio junto, sem precisar entrar no canal de voz do Discord</div>
+            </div>
+            <label class="settings-toggle">
+              <input id="browser-listen-toggle" type="checkbox" />
+              <span class="settings-toggle-track"></span>
+            </label>
+          </div>
         </div>
       </div>
 
@@ -716,6 +727,10 @@
   </div>
 
   <div id="toast" class="toast"></div>
+
+  <!-- Audio do modo "ouvir pelo navegador" (ver toggle nas Configuracoes).
+       Sem controls: e controlado por JS, nao pelo player nativo do navegador. -->
+  <audio id="browser-listen-audio" preload="none"></audio>
 
   <script src="app.js"></script>
 </body>

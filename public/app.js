@@ -178,12 +178,17 @@
     }
     settings.sessionToken = '';
     currentUser = null;
+    setBrowserListen(false);
     refreshAccountUI();
     renderPlaylists();
   });
 
   guildSelectEl.addEventListener('change', () => {
     settings.currentGuildId = guildSelectEl.value;
+    // Trocar de servidor sem desligar deixaria tocando o audio do servidor
+    // ANTERIOR (cada stream e amarrado ao guildId de quando foi aberto) -
+    // mais seguro desligar e a pessoa religar se quiser, no servidor novo.
+    setBrowserListen(false);
   });
 
   document.getElementById('force-reset-btn').addEventListener('click', async () => {
@@ -1304,6 +1309,76 @@
     btn.addEventListener('click', () => setAutoplay(!btn.classList.contains('active')));
   });
 
+  // ---------- Ouvir pelo navegador (sem precisar entrar no canal de voz) ----------
+  // Um <audio> proprio, independente do Discord: pede um ticket de curta
+  // duracao (o /listen nao aceita o x-session-token normal, porque e o
+  // "src" de uma tag <audio> - o navegador nao manda headers customizados
+  // nesse tipo de requisicao) e aponta o audio pra ele.
+  const browserListenAudioEl = document.getElementById('browser-listen-audio');
+  const browserListenToggleEl = document.getElementById('browser-listen-toggle');
+  let browserListenEnabled = false;
+  // Id da faixa que o stream atual esta tocando - usado so pra perceber
+  // quando a musica trocou e reconectar (o stream em si nao "avisa" troca
+  // de faixa sozinho, cada ouvinte e um processo ffmpeg isolado por faixa).
+  let browserListenTrackId = null;
+
+  async function startBrowserListenStream() {
+    const guildId = settings.currentGuildId;
+    if (!guildId) return;
+    try {
+      const { ticket } = await api('/listen/ticket', { method: 'POST' });
+      browserListenAudioEl.src = `${settings.apiUrl}/api/listen?guildId=${encodeURIComponent(guildId)}&ticket=${encodeURIComponent(ticket)}`;
+      await browserListenAudioEl.play();
+    } catch (err) {
+      console.error('Erro ao iniciar audio pelo navegador:', err.message);
+    }
+  }
+
+  function stopBrowserListenStream() {
+    browserListenAudioEl.pause();
+    browserListenAudioEl.removeAttribute('src');
+    browserListenAudioEl.load();
+    browserListenTrackId = null;
+  }
+
+  async function setBrowserListen(enabled) {
+    browserListenEnabled = enabled;
+    browserListenToggleEl.checked = enabled;
+    if (enabled) {
+      browserListenTrackId = currentPlayingTrack?.id ?? null;
+      await startBrowserListenStream();
+    } else {
+      stopBrowserListenStream();
+    }
+  }
+
+  browserListenToggleEl.addEventListener('change', () => setBrowserListen(browserListenToggleEl.checked));
+
+  // Chamado a cada applyStatus(): se a faixa tocando agora mudou desde a
+  // ultima vez que o stream do navegador comecou, reconecta pra ficar em
+  // sincronia com o que esta no Discord.
+  function syncBrowserListenWithCurrentTrack() {
+    if (!browserListenEnabled) return;
+    const newId = currentPlayingTrack?.id ?? null;
+    if (newId === browserListenTrackId) return;
+    browserListenTrackId = newId;
+    if (newId) {
+      startBrowserListenStream();
+    } else {
+      stopBrowserListenStream();
+    }
+  }
+
+  // Se o stream cair sozinho (erro de rede, ou a faixa realmente terminou
+  // antes do proximo poll de status perceber a troca), tenta reconectar
+  // automaticamente enquanto o modo continuar ligado.
+  browserListenAudioEl.addEventListener('ended', () => {
+    if (browserListenEnabled) startBrowserListenStream();
+  });
+  browserListenAudioEl.addEventListener('error', () => {
+    if (browserListenEnabled && browserListenAudioEl.src) startBrowserListenStream();
+  });
+
   document.getElementById('player-like-btn').addEventListener('click', () => {
     if (!currentPlayingTrack) {
       alert('Nada tocando agora.');
@@ -1406,6 +1481,8 @@
     // contadores usam status.queueLength, nunca status.queue.length.
     renderHomeQueuePreview(status.queue, status.queueLength);
     renderNextUp(status.current ? status.queue[0] : null, status.queue, status.queueLength);
+
+    syncBrowserListenWithCurrentTrack();
   }
 
   // ---------- Prévia da próxima faixa, acima da barra do player (PC e mobile) ----------

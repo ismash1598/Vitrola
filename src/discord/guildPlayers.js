@@ -602,6 +602,66 @@ function createGuildPlayer() {
     return currentTrack.durationMs ? currentTrack.durationMs / 1000 : null;
   }
 
+  // Deixa um navegador "escutar junto" via HTTP, sem precisar estar no
+  // canal de voz do Discord - um processo ffmpeg PROPRIO por ouvinte
+  // (independente do que alimenta o Discord), comecando do instante atual
+  // da faixa. Varios navegadores podem escutar ao mesmo tempo, cada um com
+  // seu processo.
+  //
+  // Volume nao e aplicado aqui (fica por conta do proprio <audio> do
+  // navegador, que ja tem controle de volume local) - por isso sempre da
+  // pra tentar o remux puro (-c:a copy) quando a fonte ja e opus, sem
+  // nenhum motivo pra transcodificar (ver F1 do custo de CPU).
+  function attachHttpListener(res) {
+    if (!currentTrack || !currentTrack._audioUrl) return false;
+
+    const offsetSeconds = computeElapsedSeconds();
+    const audioCodec = currentTrack._youtube?.audioCodec;
+
+    const args = [
+      '-reconnect', '1',
+      '-reconnect_streamed', '1',
+      '-reconnect_delay_max', '5',
+      '-ss', String(offsetSeconds),
+      '-i', currentTrack._audioUrl,
+      '-analyzeduration', '0',
+      '-loglevel', 'error',
+      '-vn',
+      ...(audioCodec === 'opus' ? ['-c:a', 'copy'] : ['-c:a', 'libopus', '-ar', '48000', '-ac', '2']),
+      '-f', 'opus',
+      'pipe:1',
+    ];
+
+    const ffmpeg = spawn(ffmpegPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+
+    ffmpeg.on('error', (err) => {
+      console.error(`[player] falha ao iniciar o ffmpeg pro ouvinte HTTP (${ffmpegPath}):`, err.message);
+      res.end();
+    });
+
+    let ffmpegStderr = '';
+    ffmpeg.stderr.on('data', (chunk) => {
+      ffmpegStderr += chunk.toString();
+    });
+    ffmpeg.once('close', (code, signal) => {
+      if (!signal && code !== 0 && ffmpegStderr.trim()) {
+        console.error(`[player] ffmpeg do ouvinte HTTP terminou com erro (code ${code}):`, ffmpegStderr.trim());
+      }
+      res.end();
+    });
+
+    // Se o navegador fechar a conexao (parou de ouvir, trocou de aba,
+    // etc), mata o processo - sem isso cada "escuta" abandonada ficaria
+    // rodando ffmpeg pra sempre.
+    res.on('close', () => {
+      if (!ffmpeg.killed) ffmpeg.kill('SIGKILL');
+    });
+
+    res.setHeader('Content-Type', 'audio/ogg');
+    ffmpeg.stdout.pipe(res);
+    return true;
+  }
+
   // Por padrao a fila vai CORTADA nas primeiras faixas. O front consulta o
   // status a cada 1s, e a fila inteira (que pode ter 100+ faixas) eram
   // dezenas de KB de JSON por segundo, por navegador aberto - sendo que o
@@ -656,6 +716,7 @@ function createGuildPlayer() {
     setVolume,
     setAutoplay,
     getStatus,
+    attachHttpListener,
   };
 }
 

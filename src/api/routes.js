@@ -73,6 +73,11 @@ router.get('/history', requireAuth, (req, res) => {
   res.json(history.getHistory(req.user.id));
 });
 
+// ---- Ticket de curta duracao pro /listen (ver comentario la em cima) ----
+router.post('/listen/ticket', requireAuth, (req, res) => {
+  res.json({ ticket: session.createStreamTicket(req.user) });
+});
+
 // ---- Estatisticas publicas (pra landing page, antes do login) ----
 router.get('/public-stats', (req, res) => {
   res.json({ guildCount: bot.client.guilds?.cache.size ?? 0 });
@@ -86,6 +91,31 @@ router.get(
     if (!q) return res.status(400).json({ error: 'parametro q e obrigatorio' });
     const tracks = await spotify.searchTracks(q);
     res.json(tracks);
+  })
+);
+
+// ---- Escutar pelo navegador (audio ao vivo, sem precisar do canal de voz) ----
+// GET porque essa URL vira o "src" de uma tag <audio> - o navegador nao
+// manda headers customizados nesse tipo de requisicao, entao nao da pra
+// exigir x-session-token aqui. Usa um ticket de uso unico e vida curta (ver
+// /listen/ticket, essa sim autenticada do jeito normal) em vez do token de
+// sessao de 90 dias, que nunca aparece numa URL.
+router.get(
+  '/listen',
+  asyncRoute(async (req, res, next) => {
+    const user = session.consumeStreamTicket(req.query.ticket);
+    if (!user) return next(forbidden('Ticket invalido ou expirado - peca um novo em /listen/ticket'));
+
+    const guildId = req.query.guildId;
+    if (!guildId || !isMutualGuild(bot.client, user.guildIds, guildId)) {
+      return next(forbidden('Voce nao esta nesse servidor, ou o bot nao esta'));
+    }
+
+    const player = getPlayer(guildId);
+    const started = player.attachHttpListener(res);
+    if (!started) {
+      res.status(404).json({ error: 'Nada tocando agora' });
+    }
   })
 );
 
