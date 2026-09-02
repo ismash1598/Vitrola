@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { requireSameVoiceChannel } = require('../src/discord/guilds');
+const { requireSameVoiceChannel, requireTrackOwnerOrAdmin } = require('../src/discord/guilds');
 const { canView, canEdit } = require('../src/db/playlists');
 
 function clienteComUsuarioEm(canalDoUsuario) {
@@ -44,6 +44,46 @@ test('libera quem esta no mesmo canal do bot', () => {
 test('nao exige canal quando o bot nao esta tocando em lugar nenhum', () => {
   assert.doesNotThrow(() =>
     requireSameVoiceChannel(clienteComUsuarioEm(null), 'g1', 'u1', playerNoCanal(null))
+  );
+});
+
+// ---- Posse de faixa (skip / remover da fila / reordenar) ----
+// F4 da auditoria de seguranca: so /skip verificava addedBy/admin; remover e
+// reordenar itens da fila deixavam qualquer pessoa no canal mexer nas
+// faixas de QUALQUER outra pessoa.
+
+function clienteComAdmin(ehAdmin) {
+  return {
+    guilds: {
+      fetch: async () => ({
+        members: {
+          fetch: async () => ({
+            permissions: { has: () => ehAdmin },
+          }),
+        },
+      }),
+    },
+  };
+}
+
+test('requireTrackOwnerOrAdmin libera quem adicionou a propria faixa', async () => {
+  await assert.doesNotReject(() => requireTrackOwnerOrAdmin(null, 'g1', 'u1', 'u1'));
+});
+
+test('requireTrackOwnerOrAdmin libera faixa sem dono (veio do autoplay)', async () => {
+  await assert.doesNotReject(() => requireTrackOwnerOrAdmin(null, 'g1', 'u1', null));
+});
+
+test('requireTrackOwnerOrAdmin bloqueia quem nao adicionou e nao e admin', async () => {
+  await assert.rejects(
+    () => requireTrackOwnerOrAdmin(clienteComAdmin(false), 'g1', 'u1', 'outro-usuario'),
+    (err) => err.status === 403
+  );
+});
+
+test('requireTrackOwnerOrAdmin libera administrador mesmo sem ser quem adicionou', async () => {
+  await assert.doesNotReject(() =>
+    requireTrackOwnerOrAdmin(clienteComAdmin(true), 'g1', 'u1', 'outro-usuario')
   );
 });
 

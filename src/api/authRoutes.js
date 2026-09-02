@@ -21,8 +21,10 @@ router.get('/discord/callback', async (req, res) => {
   try {
     const user = await exchangeCodeForUser(code);
     const token = session.createSession(user);
-    const webOrigin = process.env.WEB_ORIGIN || `${req.protocol}://${req.get('host')}`;
-    res.redirect(`${webOrigin}/?sessionToken=${token}`);
+    // WEB_ORIGIN vem so do .env, nunca do header Host da requisicao (que e
+    // controlado pelo cliente) - a validacao na subida do processo (ver
+    // src/config.js) garante que essa variavel sempre existe aqui.
+    res.redirect(`${process.env.WEB_ORIGIN}/?sessionToken=${token}`);
   } catch (err) {
     console.error('[auth] erro no callback do Discord:', err.message);
     res.status(500).send(`Falha no login com Discord: ${err.message}`);

@@ -1,5 +1,8 @@
 require('dotenv').config();
 
+const { requireWebOrigin } = require('./config');
+requireWebOrigin();
+
 const path = require('path');
 const express = require('express');
 const bot = require('./discord/bot');
@@ -11,6 +14,16 @@ app.use(express.json());
 
 app.use('/auth', authRoutes);
 app.use('/api', apiRoutes);
+
+// Paginas legais (URL limpa, sem .html) - exigidas pelo Discord Developer
+// Portal pra habilitar certos recursos do app (ex: OAuth em produção).
+app.get('/terms-of-service', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'terms-of-service.html'));
+});
+app.get('/privacy-policy', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'privacy-policy.html'));
+});
+
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Garante que erros nas rotas da API voltem como JSON (nunca a pagina de erro

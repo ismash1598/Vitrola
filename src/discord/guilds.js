@@ -65,10 +65,27 @@ async function isGuildAdmin(client, guildId, userId) {
   return member.permissions.has(PermissionFlagsBits.Administrator);
 }
 
+// So quem adicionou uma faixa (addedBy) ou um administrador da guild pode
+// fazer algo disruptivo com ela (pular, remover da fila, reordenar). Faixas
+// sem addedBy (autoplay) nao tem dono - qualquer um no canal pode mexer.
+//
+// Extraido daqui em vez de repetir em cada rota: antes so /skip tinha essa
+// checagem, e /queue/:index, /queue e /queue/reorder deixavam qualquer
+// pessoa no canal de voz mexer nas faixas de QUALQUER outra pessoa (ver F4
+// da auditoria de seguranca).
+async function requireTrackOwnerOrAdmin(client, guildId, userId, addedBy) {
+  if (!addedBy || addedBy === userId) return;
+  const admin = await isGuildAdmin(client, guildId, userId);
+  if (!admin) {
+    throw forbidden('Só quem adicionou essa música ou um administrador pode fazer isso.');
+  }
+}
+
 module.exports = {
   listMutualGuilds,
   isMutualGuild,
   ensureVoiceForUser,
   requireSameVoiceChannel,
   isGuildAdmin,
+  requireTrackOwnerOrAdmin,
 };

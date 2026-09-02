@@ -8,6 +8,7 @@ const {
   ensureVoiceForUser,
   requireSameVoiceChannel,
   isGuildAdmin,
+  requireTrackOwnerOrAdmin,
 } = require('../discord/guilds');
 const bot = require('../discord/bot');
 const playlists = require('../db/playlists');
@@ -118,23 +119,62 @@ router.post(
   })
 );
 
-router.delete('/queue/:index', withPlayer, requireVoicePeer, (req, res) => {
-  const ok = req.player.removeFromQueue(Number(req.params.index));
-  if (!ok) throw notFound('indice invalido');
-  res.json(req.player.getStatus());
-});
+router.delete(
+  '/queue/:index',
+  withPlayer,
+  requireVoicePeer,
+  asyncRoute(async (req, res) => {
+    const index = Number(req.params.index);
+    const target = req.player.getStatus({ fullQueue: true }).queue[index];
+    if (!target) throw notFound('indice invalido');
 
-router.delete('/queue', withPlayer, requireVoicePeer, (req, res) => {
-  req.player.clearQueue();
-  res.json(req.player.getStatus());
-});
+    await requireTrackOwnerOrAdmin(bot.client, req.guildId, req.user.id, target.addedBy);
 
-router.post('/queue/reorder', withPlayer, requireVoicePeer, (req, res) => {
-  const { from, to } = req.body;
-  const ok = req.player.reorderQueue(Number(from), Number(to));
-  if (!ok) throw badRequest('from/to invalidos');
-  res.json(req.player.getStatus());
-});
+    req.player.removeFromQueue(index);
+    res.json(req.player.getStatus());
+  })
+);
+
+// Limpar a fila inteira nao tem um "dono" unico (pode ter faixa de varias
+// pessoas misturada) - so exige confirmar posse/admin quando existe faixa de
+// ALGUEM alem de quem esta pedindo; uma fila so com musicas suas (ou so
+// autoplay, sem addedBy) continua liberada pra limpar sem admin.
+router.delete(
+  '/queue',
+  withPlayer,
+  requireVoicePeer,
+  asyncRoute(async (req, res) => {
+    const { queue } = req.player.getStatus({ fullQueue: true });
+    const temFaixaDeOutraPessoa = queue.some((t) => t.addedBy && t.addedBy !== req.user.id);
+    if (temFaixaDeOutraPessoa) {
+      const admin = await isGuildAdmin(bot.client, req.guildId, req.user.id);
+      if (!admin) {
+        throw forbidden('Só um administrador pode limpar uma fila com músicas de outras pessoas.');
+      }
+    }
+
+    req.player.clearQueue();
+    res.json(req.player.getStatus());
+  })
+);
+
+router.post(
+  '/queue/reorder',
+  withPlayer,
+  requireVoicePeer,
+  asyncRoute(async (req, res) => {
+    const { from, to } = req.body;
+    const fromIndex = Number(from);
+    const target = req.player.getStatus({ fullQueue: true }).queue[fromIndex];
+    if (!target) throw badRequest('from/to invalidos');
+
+    await requireTrackOwnerOrAdmin(bot.client, req.guildId, req.user.id, target.addedBy);
+
+    const ok = req.player.reorderQueue(fromIndex, Number(to));
+    if (!ok) throw badRequest('from/to invalidos');
+    res.json(req.player.getStatus());
+  })
+);
 
 // ---- Controles de reproducao ----
 // Todas exigem estar no mesmo canal de voz que o bot (requireVoicePeer).
@@ -156,13 +196,7 @@ router.post(
     const status = req.player.getStatus();
     if (!status.current) throw badRequest('nada tocando');
 
-    const addedBy = status.current.track.addedBy;
-    if (addedBy && addedBy !== req.user.id) {
-      const admin = await isGuildAdmin(bot.client, req.guildId, req.user.id);
-      if (!admin) {
-        throw forbidden('Só quem colocou essa música ou um administrador pode pular.');
-      }
-    }
+    await requireTrackOwnerOrAdmin(bot.client, req.guildId, req.user.id, status.current.track.addedBy);
 
     req.player.skip();
     res.json(req.player.getStatus());
