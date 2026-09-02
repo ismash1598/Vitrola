@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Política de Privacidade — Vitrola</title>
+<style>
+  :root {
+    --bg: #100f0d;
+    --bg-panel: #171613;
+    --text: #f2ece0;
+    --text-dim: #9a9384;
+    --text-dim3: #8d8778;
+    --accent: #e9d34a;
+    --border: #262420;
+    --font-heading: 'Georgia', serif;
+    --font-body: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--font-body); }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 48px 24px 96px; }
+  a { color: var(--accent); }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; text-decoration: none; }
+  .brand-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--accent); position: relative; flex-shrink: 0; }
+  .brand-dot::after { content: ""; position: absolute; inset: 9px; border-radius: 50%; background: var(--accent); }
+  .brand-name { font-family: var(--font-heading); font-size: 20px; color: var(--accent); letter-spacing: 0.02em; }
+  h1 { font-family: var(--font-heading); font-size: 32px; margin: 0 0 8px; }
+  .updated { color: var(--text-dim3); font-size: 13px; margin-bottom: 40px; }
+  h2 { font-size: 18px; color: var(--accent); margin: 36px 0 10px; }
+  p, li { line-height: 1.65; color: var(--text-dim); font-size: 14.5px; }
+  ul { padding-left: 20px; }
+  .card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 14px 0; }
+  .back { display: inline-block; margin-top: 48px; color: var(--text-dim3); text-decoration: none; font-size: 13.5px; }
+  .back:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="brand" href="/">
+      <span class="brand-dot"></span>
+      <span class="brand-name">Vitrola</span>
+    </a>
+
+    <h1>Política de Privacidade</h1>
+    <p class="updated">Última atualização: 2 de setembro de 2026</p>
+
+    <p>
+      Esta página explica quais dados o Vitrola coleta quando você entra com sua conta do Discord,
+      pra que servem, e por quanto tempo ficam guardados. O Vitrola é operado de forma independente
+      e não tem relação oficial com Discord, Spotify ou YouTube.
+    </p>
+
+    <h2>1. O que coletamos</h2>
+    <div class="card">
+      <p><strong>Ao entrar com Discord</strong>, recebemos: seu ID de usuário do Discord, nome de
+      usuário, foto de perfil (avatar), e a lista dos servidores do Discord em que você está (só
+      pra identificar quais têm o bot em comum com você). Não pedimos nem recebemos seu e-mail,
+      senha do Discord, ou qualquer dado de pagamento.</p>
+    </div>
+    <div class="card">
+      <p><strong>Playlists que você cria</strong>: nome da playlist, quem é dono, e as faixas
+      adicionadas (nome da música, artista, álbum, capa, link de origem). Playlists marcadas como
+      "servidor" ou "públicas" ficam visíveis pra outras pessoas conforme você mesmo escolhe.</p>
+    </div>
+    <div class="card">
+      <p><strong>Histórico de reprodução</strong>: guardamos as últimas 10 músicas que você tocou,
+      só pra montar a seção "recomendado" da tela inicial.</p>
+    </div>
+
+    <h2>2. Como usamos esses dados</h2>
+    <ul>
+      <li>Manter você conectado (sessão de login), por até 90 dias;</li>
+      <li>Mostrar suas playlists e as de servidores/públicas que você tem acesso a ver;</li>
+      <li>Conferir periodicamente se você ainda está nos servidores que a sessão registrou, pra
+      manter o acesso a playlists "de servidor" atualizado;</li>
+      <li>Montar as sugestões de "recomendado" a partir do seu histórico.</li>
+    </ul>
+
+    <h2>3. Onde os dados ficam guardados</h2>
+    <p>
+      Tudo fica em arquivos no próprio servidor onde o Vitrola está hospedado — não usamos serviços
+      de terceiros pra armazenamento nem vendemos ou compartilhamos esses dados com ninguém além do
+      necessário pra fazer o serviço funcionar (ver seção 4). Sessões expiram automaticamente depois
+      de 90 dias.
+    </p>
+
+    <h2>4. Serviços de terceiros envolvidos</h2>
+    <ul>
+      <li><strong>Discord</strong> — login (OAuth2) e conexão ao canal de voz;</li>
+      <li><strong>Spotify</strong> — usado só pra buscar nome/artista/capa das músicas (a busca em
+      si não exige login com Discord);</li>
+      <li><strong>YouTube</strong> — fonte do áudio realmente reproduzido no canal de voz.</li>
+    </ul>
+    <p>O uso desses serviços está sujeito às respectivas políticas de privacidade deles também.</p>
+
+    <h2>5. Cookies</h2>
+    <p>
+      O Vitrola não usa cookies pra login. O token de sessão fica salvo no armazenamento local do
+      seu navegador (localStorage), e é removido quando você clica em "Sair".
+    </p>
+
+    <h2>6. Seus direitos</h2>
+    <p>
+      Você pode apagar suas playlists a qualquer momento pela própria interface. Pra pedir a
+      remoção completa dos seus dados (sessão, histórico, playlists) ou tirar dúvidas sobre esta
+      política, entre em contato: <strong>[coloque aqui seu e-mail ou usuário do Discord de
+      contato]</strong>.
+    </p>
+
+    <h2>7. Alterações</h2>
+    <p>
+      Esta política pode mudar conforme o serviço evolui. A data no topo da página sempre reflete
+      a versão mais recente.
+    </p>
+
+    <a class="back" href="/">← Voltar pro Vitrola</a>
+  </div>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Termos de Serviço — Vitrola</title>
+<style>
+  :root {
+    --bg: #100f0d;
+    --bg-panel: #171613;
+    --text: #f2ece0;
+    --text-dim: #9a9384;
+    --text-dim3: #8d8778;
+    --accent: #e9d34a;
+    --border: #262420;
+    --font-heading: 'Georgia', serif;
+    --font-body: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--font-body); }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 48px 24px 96px; }
+  a { color: var(--accent); }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; text-decoration: none; }
+  .brand-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--accent); position: relative; flex-shrink: 0; }
+  .brand-dot::after { content: ""; position: absolute; inset: 9px; border-radius: 50%; background: var(--accent); }
+  .brand-name { font-family: var(--font-heading); font-size: 20px; color: var(--accent); letter-spacing: 0.02em; }
+  h1 { font-family: var(--font-heading); font-size: 32px; margin: 0 0 8px; }
+  .updated { color: var(--text-dim3); font-size: 13px; margin-bottom: 40px; }
+  h2 { font-size: 18px; color: var(--accent); margin: 36px 0 10px; }
+  p, li { line-height: 1.65; color: var(--text-dim); font-size: 14.5px; }
+  ul { padding-left: 20px; }
+  .back { display: inline-block; margin-top: 48px; color: var(--text-dim3); text-decoration: none; font-size: 13.5px; }
+  .back:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="brand" href="/">
+      <span class="brand-dot"></span>
+      <span class="brand-name">Vitrola</span>
+    </a>
+
+    <h1>Termos de Serviço</h1>
+    <p class="updated">Última atualização: 2 de setembro de 2026</p>
+
+    <p>
+      Ao usar o Vitrola (o bot de Discord e a interface web de busca/reprodução), você concorda
+      com os termos abaixo. Se não concordar, é só não usar o serviço.
+    </p>
+
+    <h2>1. O que é o serviço</h2>
+    <p>
+      O Vitrola é um bot de música pra servidores de Discord, com busca de faixas, fila, autoplay
+      e playlists, controlado por uma interface web. É operado de forma independente, sem vínculo
+      oficial com Discord, Spotify ou YouTube.
+    </p>
+
+    <h2>2. Conta e acesso</h2>
+    <p>
+      O login é feito exclusivamente via Discord (OAuth2) — não existe cadastro com senha própria.
+      Você só consegue controlar a reprodução em servidores onde tanto você quanto o bot estejam
+      presentes, e apenas a partir do canal de voz onde estiver conectado.
+    </p>
+
+    <h2>3. Uso aceitável</h2>
+    <ul>
+      <li>Não usar o serviço pra assediar, sobrecarregar de propósito, ou prejudicar outros
+      usuários ou servidores;</li>
+      <li>Não tentar burlar as checagens de permissão da interface ou da API;</li>
+      <li>Respeitar as próprias regras de Uso do Discord (Termos de Serviço e Diretrizes da
+      Comunidade) nos servidores onde o bot é usado.</li>
+    </ul>
+
+    <h2>4. Conteúdo de terceiros</h2>
+    <p>
+      A busca de faixas usa o catálogo do Spotify; o áudio efetivamente reproduzido é obtido do
+      YouTube. O Vitrola não hospeda, não é dono, e não reivindica direitos sobre nenhuma música
+      reproduzida — todo o conteúdo pertence aos respectivos detentores de direitos autorais. O
+      serviço é destinado a uso pessoal e não comercial.
+    </p>
+
+    <h2>5. Playlists e conteúdo enviado por você</h2>
+    <p>
+      Você é responsável pelo que adiciona nas suas playlists e pela visibilidade que escolhe pra
+      elas (privada, do servidor, ou pública). Playlists públicas ou de servidor ficam visíveis
+      pra outras pessoas conforme descrito na Política de Privacidade.
+    </p>
+
+    <h2>6. Isenção de garantias</h2>
+    <p>
+      O serviço é fornecido "como está", sem garantia de disponibilidade contínua, precisão dos
+      resultados de busca, ou ausência de interrupções. Podemos alterar, suspender ou encerrar o
+      serviço a qualquer momento, sem aviso prévio.
+    </p>
+
+    <h2>7. Limitação de responsabilidade</h2>
+    <p>
+      Na máxima extensão permitida por lei, não nos responsabilizamos por danos indiretos,
+      perda de dados, ou qualquer prejuízo decorrente do uso ou da impossibilidade de uso do
+      serviço.
+    </p>
+
+    <h2>8. Encerramento de acesso</h2>
+    <p>
+      Podemos remover o acesso de qualquer usuário ou servidor que viole estes termos, sem aviso
+      prévio.
+    </p>
+
+    <h2>9. Alterações nestes termos</h2>
+    <p>
+      Podemos atualizar estes termos conforme o serviço evolui. A data no topo da página sempre
+      reflete a versão mais recente. O uso continuado depois de uma alteração significa que você
+      concorda com os novos termos.
+    </p>
+
+    <h2>10. Contato</h2>
+    <p>
+      Dúvidas sobre estes termos: <strong>[coloque aqui seu e-mail ou usuário do Discord de
+      contato]</strong>.
+    </p>
+
+    <a class="back" href="/">← Voltar pro Vitrola</a>
+  </div>
+</body>
+</html>
