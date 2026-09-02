@@ -2051,7 +2051,8 @@ input[type="range"]::-moz-range-thumb {
 .retro-artist-row:first-child { border-top: none; }
 .retro-artist-index, .retro-track-index { flex: none; width: 17px; text-align: center; font-family: var(--font-heading); font-size: 15px; color: var(--text-dim2); }
 .retro-artist-row.rank-1 .retro-artist-index { color: var(--accent); }
-.retro-artist-art { width: 42px; height: 42px; flex: none; border-radius: 999px; background: linear-gradient(140deg, #6d4b2f, #2b2119); }
+.retro-artist-art { width: 42px; height: 42px; flex: none; border-radius: 999px; background: linear-gradient(140deg, #6d4b2f, #2b2119); overflow: hidden; }
+.retro-artist-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .retro-artist-text, .retro-track-text { flex: 1; min-width: 0; }
 .retro-artist-name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .retro-artist-plays { font-size: 12px; color: var(--text-dim3); }
@@ -2061,7 +2062,8 @@ input[type="range"]::-moz-range-thumb {
 
 .retro-track-row { display: flex; align-items: center; gap: 12px; }
 .retro-track-row + .retro-track-row { margin-top: 8px; }
-.retro-track-art { width: 40px; height: 40px; flex: none; border-radius: 11px; background: linear-gradient(140deg, #6d4b2f, #2b2119); }
+.retro-track-art { width: 40px; height: 40px; flex: none; border-radius: 11px; background: linear-gradient(140deg, #6d4b2f, #2b2119); overflow: hidden; }
+.retro-track-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .retro-track-title { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .retro-track-artist { font-size: 12px; color: var(--text-dim3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .retro-track-plays { flex: none; font-size: 12px; color: var(--text-dim2); font-variant-numeric: tabular-nums; }

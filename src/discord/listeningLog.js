@@ -179,7 +179,23 @@ function getRetrospective({ guildId, scope, userId, from, to } = {}) {
     }
   }
 
-  const topArtists = [...artistStats.values()].sort((a, b) => b.count - a.count).slice(0, 5);
+  // Nao temos foto de artista de verdade (Spotify so da isso por artista,
+  // via chamada extra que nao fazemos hoje) - usa a capa da faixa MAIS
+  // tocada desse artista como aproximacao, em vez de deixar sem imagem.
+  const artistArt = new Map();
+  for (const t of trackStats.values()) {
+    for (const artist of t.artists || []) {
+      const current = artistArt.get(artist);
+      if (!current || t.count > current.count) {
+        artistArt.set(artist, { albumArt: t.albumArt, count: t.count });
+      }
+    }
+  }
+
+  const topArtists = [...artistStats.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5)
+    .map((a) => ({ ...a, albumArt: artistArt.get(a.name)?.albumArt || null }));
   const topTracks = [...trackStats.values()].sort((a, b) => b.count - a.count).slice(0, 5);
   const topDays = [...dayStats.entries()]
     .map(([date, minutes]) => ({ date, minutes: Math.round(minutes) }))

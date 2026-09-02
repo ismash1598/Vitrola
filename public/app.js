@@ -1875,11 +1875,14 @@
     data.topArtists.forEach((a, i) => {
       const [artFrom, artTo] = PLACEHOLDER_GRADIENTS[hashStr(a.name) % PLACEHOLDER_GRADIENTS.length];
       const barPct = Math.round((a.count / maxArtistPlays) * 100);
+      const artInner = a.albumArt
+        ? `<img src="${escapeAttr(a.albumArt)}" alt="" />`
+        : '';
       const li = document.createElement('li');
       li.className = `retro-artist-row${i === 0 ? ' rank-1' : ''}`;
       li.innerHTML = `
         <span class="retro-artist-index">${i + 1}</span>
-        <div class="retro-artist-art" style="background: linear-gradient(140deg, ${artFrom}, ${artTo})"></div>
+        <div class="retro-artist-art" style="background: linear-gradient(140deg, ${artFrom}, ${artTo})">${artInner}</div>
         <div class="retro-artist-text">
           <div class="retro-artist-name">${escapeHtml(a.name)}</div>
           <div class="retro-artist-plays">${a.count} execuç${a.count === 1 ? 'ão' : 'ões'}</div>
@@ -1893,11 +1896,14 @@
     tracksListEl.innerHTML = '';
     data.topTracks.forEach((t, i) => {
       const [artFrom, artTo] = PLACEHOLDER_GRADIENTS[hashStr(t.name) % PLACEHOLDER_GRADIENTS.length];
+      const artInner = t.albumArt
+        ? `<img src="${escapeAttr(t.albumArt)}" alt="" />`
+        : '';
       const li = document.createElement('li');
       li.className = 'retro-track-row';
       li.innerHTML = `
         <span class="retro-track-index"${i === 0 ? ' style="color: var(--accent)"' : ''}>${i + 1}</span>
-        <div class="retro-track-art" style="background: linear-gradient(140deg, ${artFrom}, ${artTo})"></div>
+        <div class="retro-track-art" style="background: linear-gradient(140deg, ${artFrom}, ${artTo})">${artInner}</div>
         <div class="retro-track-text">
           <div class="retro-track-title">${escapeHtml(t.name)}</div>
           <div class="retro-track-artist">${escapeHtml((t.artists || []).join(', '))}</div>
