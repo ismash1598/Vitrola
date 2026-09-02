@@ -3,17 +3,19 @@ const path = require('path');
 const low = require('lowdb');
 const AsyncFileAdapter = require('../db/asyncFileAdapter');
 
-// Log de reproducoes por usuario, com data - alimenta a retrospectiva
-// mensal ("mais ouvidas do mes", tipo Cápsula Sonora do Spotify).
+// Log de reproducoes por usuario/servidor, com data - alimenta a
+// retrospectiva mensal ("Capsula do tempo", nos dois modos: do servidor
+// inteiro, ou so as suas proprias).
 //
 // Diferente de history.js (que so guarda as ultimas 10 faixas, sem
-// contagem nem data, so pra tela inicial): aqui cada play vira um registro
+// contagem/data, so pra tela inicial): aqui cada play vira um registro
 // PROPRIO, com timestamp - sem isso nao da pra saber quantas vezes uma
 // faixa tocou num mes especifico, so a ordem de recencia.
 //
-// Guarda o snapshot da faixa (nome/artistas/capa) em vez de so o id: assim
-// uma retrospectiva de meses atras continua legivel mesmo se a faixa tiver
-// sumido da fila/playlist ha muito tempo.
+// Guarda o snapshot da faixa e do usuario (nome/artistas/capa/username) em
+// vez de so os ids: assim uma retrospectiva de meses atras continua
+// legivel mesmo se a faixa tiver sumido de qualquer fila/playlist, ou o
+// apelido do usuario no Discord tiver mudado desde entao.
 const dataDir = path.join(__dirname, '..', '..', 'data');
 fs.mkdirSync(dataDir, { recursive: true });
 
@@ -23,10 +25,12 @@ const adapter = new AsyncFileAdapter(path.join(dataDir, 'listeningLog.json'), {
 const db = low(adapter);
 db.defaults({ plays: [] }).write();
 
-function recordPlay(userId, track) {
+function recordPlay(userId, username, guildId, track) {
   const plays = db.get('plays').value();
   plays.push({
     userId,
+    username: username || null,
+    guildId,
     trackId: track.id,
     name: track.name,
     artists: track.artists || [],
@@ -51,40 +55,112 @@ function monthRange(reference = new Date()) {
   return { from, to };
 }
 
-// Meses (mais recente primeiro) em que o usuario tem pelo menos uma
+// Meses (mais recente primeiro) em que o servidor tem pelo menos uma
 // reproducao registrada - usado pra montar a lista de capsulas disponiveis.
-function listAvailableMonths(userId) {
+// Guild-wide (nao por usuario): a capsula "do servidor" tem que aparecer
+// pra qualquer membro, nao so pra quem tocou musica.
+function listAvailableMonths(guildId) {
   const months = new Set();
   db.get('plays')
     .value()
     .forEach((p) => {
-      if (p.userId === userId) months.add(monthKey(new Date(p.playedAt)));
+      if (p.guildId === guildId) months.add(monthKey(new Date(p.playedAt)));
     });
   return [...months].sort().reverse();
 }
 
-// Agrega as faixas/artistas mais tocados de um usuario num periodo
-// [from, to). Sem periodo, usa o mes atual.
-function getRetrospective(userId, { from, to } = {}) {
+// "sem 1".."sem 4" dentro do mes - a ultima semana absorve os dias
+// excedentes de meses com mais de 28 dias, pra sempre caber em 4 barras
+// (mesmo formato do template visual).
+function weekIndexInMonth(date) {
+  return Math.min(Math.floor((date.getDate() - 1) / 7), 3);
+}
+
+function dayKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+// Ranking de quem mais pediu musica num servidor, no periodo - base tanto
+// do card "Quem mais pediu" (modo servidor) quanto "Sua posicao no
+// servidor" (modo pessoal), que por isso e sempre calculado no servidor
+// INTEIRO, independente do modo escolhido na tela.
+function buildRequesterRanking(guildPlays) {
+  const byUser = new Map(); // userId -> { userId, username, count }
+  for (const p of guildPlays) {
+    const entry = byUser.get(p.userId) || { userId: p.userId, username: p.username || 'Alguém', count: 0 };
+    entry.count += 1;
+    entry.username = p.username || entry.username; // fica com o apelido mais recente visto
+    byUser.set(p.userId, entry);
+  }
+  return [...byUser.values()].sort((a, b) => b.count - a.count);
+}
+
+// Monta o texto do card lateral - "Quem mais pediu" no modo servidor,
+// "Sua posicao no servidor" no modo pessoal.
+function buildSideCard(scope, requesters, userId) {
+  if (scope === 'server') {
+    if (!requesters.length) {
+      return { title: 'Quem mais pediu', name: '—', meta: '', note: 'Ninguém pediu música ainda esse mês.' };
+    }
+    const [first, second, third] = requesters;
+    const followers = [second, third].filter(Boolean).map((r) => `${r.username} (${r.count})`);
+    return {
+      title: 'Quem mais pediu',
+      name: first.username,
+      meta: `${first.count} pedido${first.count === 1 ? '' : 's'}`,
+      note: followers.length ? `Seguido por ${followers.join(' e ')}.` : 'Ninguém mais chegou perto.',
+    };
+  }
+
+  const totalGuildPlays = requesters.reduce((sum, r) => sum + r.count, 0);
+  const myIndex = requesters.findIndex((r) => r.userId === userId);
+  if (myIndex === -1) {
+    return { title: 'Sua posição no servidor', name: '—', meta: '', note: 'Você ainda não pediu música esse mês.' };
+  }
+  const me = requesters[myIndex];
+  const above = requesters[myIndex - 1];
+  const below = requesters[myIndex + 1];
+  let note;
+  if (above && below) note = `Atrás de ${above.username}, à frente de ${below.username}.`;
+  else if (above) note = `Atrás de ${above.username}.`;
+  else if (below) note = `Na frente de todo mundo! Próximo é ${below.username}.`;
+  else note = 'Só você pediu música esse mês.';
+
+  return {
+    title: 'Sua posição no servidor',
+    name: `${myIndex + 1}º lugar`,
+    meta: `${me.count} de ${totalGuildPlays} pedido${totalGuildPlays === 1 ? '' : 's'}`,
+    note,
+  };
+}
+
+// Agrega a retrospectiva de um servidor (scope 'server') ou de um usuario
+// dentro dele (scope 'personal') num periodo [from, to). Sem periodo, usa
+// o mes atual.
+function getRetrospective({ guildId, scope, userId, from, to } = {}) {
   const range = from && to ? { from, to } : monthRange();
   const rangeFrom = from || range.from;
   const rangeTo = to || range.to;
 
-  const plays = db
-    .get('plays')
-    .value()
-    .filter((p) => p.userId === userId)
-    .filter((p) => {
-      const playedAt = new Date(p.playedAt);
-      return playedAt >= rangeFrom && playedAt < rangeTo;
-    });
+  const allPlays = db.get('plays').value();
+  const guildPlays = allPlays.filter((p) => p.guildId === guildId && inRange(p, rangeFrom, rangeTo));
+  const scopedPlays = scope === 'personal' ? guildPlays.filter((p) => p.userId === userId) : guildPlays;
 
-  const trackStats = new Map(); // trackId -> { id, name, artists, albumArt, count }
-  const artistStats = new Map(); // nome do artista -> { name, count }
+  const trackStats = new Map();
+  const artistStats = new Map();
+  const dayStats = new Map();
+  const weekMinutes = [0, 0, 0, 0];
   let totalMs = 0;
 
-  for (const p of plays) {
+  for (const p of scopedPlays) {
+    const playedAt = new Date(p.playedAt);
+    const minutes = (p.durationMs || 0) / 60000;
     totalMs += p.durationMs || 0;
+
+    weekMinutes[weekIndexInMonth(playedAt)] += minutes;
+
+    const dKey = dayKey(playedAt);
+    dayStats.set(dKey, (dayStats.get(dKey) || 0) + minutes);
 
     const t = trackStats.get(p.trackId) || {
       id: p.trackId,
@@ -103,17 +179,34 @@ function getRetrospective(userId, { from, to } = {}) {
     }
   }
 
-  const topTracks = [...trackStats.values()].sort((a, b) => b.count - a.count).slice(0, 10);
-  const topArtists = [...artistStats.values()].sort((a, b) => b.count - a.count).slice(0, 10);
+  const topArtists = [...artistStats.values()].sort((a, b) => b.count - a.count).slice(0, 5);
+  const topTracks = [...trackStats.values()].sort((a, b) => b.count - a.count).slice(0, 5);
+  const topDays = [...dayStats.entries()]
+    .map(([date, minutes]) => ({ date, minutes: Math.round(minutes) }))
+    .sort((a, b) => b.minutes - a.minutes)
+    .slice(0, 3);
+
+  const requesters = buildRequesterRanking(guildPlays);
+  const side = buildSideCard(scope, requesters, userId);
 
   return {
     from: rangeFrom.toISOString(),
     to: rangeTo.toISOString(),
-    totalPlays: plays.length,
+    scope,
+    totalPlays: scopedPlays.length,
     totalMinutes: Math.round(totalMs / 60000),
-    topTracks,
+    distinctArtists: artistStats.size,
     topArtists,
+    topTracks,
+    weeklyMinutes: weekMinutes.map((m, i) => ({ week: i + 1, minutes: Math.round(m) })),
+    topDays,
+    side,
   };
+}
+
+function inRange(play, from, to) {
+  const playedAt = new Date(play.playedAt);
+  return playedAt >= from && playedAt < to;
 }
 
 module.exports = { recordPlay, getRetrospective, listAvailableMonths, monthKey, monthRange };

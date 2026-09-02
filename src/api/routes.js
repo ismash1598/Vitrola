@@ -79,12 +79,23 @@ router.post('/listen/ticket', requireAuth, (req, res) => {
   res.json({ ticket: session.createStreamTicket(req.user) });
 });
 
-// ---- Retrospectiva mensal (faixas/artistas mais ouvidos, tipo "capsula do tempo") ----
+// ---- Retrospectiva mensal ("Capsula do tempo": modo servidor ou pessoal) ----
 router.get('/retrospective/months', requireAuth, (req, res) => {
-  res.json(listeningLog.listAvailableMonths(req.user.id));
+  const guildId = req.query.guildId;
+  if (!guildId || !isMutualGuild(bot.client, req.user.guildIds, guildId)) {
+    throw forbidden('Voce nao esta nesse servidor, ou o bot nao esta');
+  }
+  res.json(listeningLog.listAvailableMonths(guildId));
 });
 
 router.get('/retrospective', requireAuth, (req, res) => {
+  const guildId = req.query.guildId;
+  if (!guildId || !isMutualGuild(bot.client, req.user.guildIds, guildId)) {
+    throw forbidden('Voce nao esta nesse servidor, ou o bot nao esta');
+  }
+
+  const scope = req.query.scope === 'server' ? 'server' : 'personal';
+
   let reference;
   if (req.query.month) {
     const match = /^(\d{4})-(\d{2})$/.exec(req.query.month);
@@ -94,7 +105,7 @@ router.get('/retrospective', requireAuth, (req, res) => {
   const { from, to } = listeningLog.monthRange(reference);
   res.json({
     month: listeningLog.monthKey(from),
-    ...listeningLog.getRetrospective(req.user.id, { from, to }),
+    ...listeningLog.getRetrospective({ guildId, scope, userId: req.user.id, from, to }),
   });
 });
 
@@ -165,7 +176,7 @@ router.post(
     const player = await ensureVoiceForUser(bot.client, req.guildId, req.user.id);
     player.enqueue(track, Boolean(req.body.playNext), req.user.id);
     history.recordHistory(req.user.id, track);
-    listeningLog.recordPlay(req.user.id, track);
+    listeningLog.recordPlay(req.user.id, req.user.username, req.guildId, track);
     res.json(player.getStatus());
   })
 );

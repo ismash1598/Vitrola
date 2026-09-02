@@ -1965,3 +1965,163 @@ input[type="range"]::-moz-range-thumb {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+
+/* ==========================================================================
+   Aba Historico - Capsula do tempo (retrospectiva mensal, modo servidor ou
+   pessoal). Portado de "template html/Vitrola Capsula.html" - cores e
+   espacamento copiados do mockup (que ja usa a mesma paleta do resto do
+   site: #171613=--bg-elevated, #e9d34a=--accent, #f2ece0=--text, etc). */
+
+.retro-page { display: flex; flex-direction: column; gap: 16px; padding: 0 16px; max-width: 560px; margin: 0 auto; width: 100%; }
+
+/* — hero: alterna servidor/pessoal, titulo, e os 3 numeros grandes — */
+.retro-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 26px;
+  background: linear-gradient(165deg, #221f14 0%, #16150f 58%, #131210 100%);
+  border: 1px solid #2a2620;
+  padding: 22px 20px 20px;
+}
+.retro-hero-glow {
+  position: absolute;
+  right: -70px;
+  top: -80px;
+  width: 240px;
+  height: 240px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 35%, rgba(233, 211, 74, 0.18), rgba(233, 211, 74, 0) 70%);
+  pointer-events: none;
+}
+.retro-hero-inner { position: relative; display: flex; flex-direction: column; gap: 16px; }
+.retro-hero-top { display: flex; align-items: center; gap: 9px; }
+.retro-hero-logo-dot {
+  width: 22px; height: 22px; flex: none; border-radius: 999px;
+  background: radial-gradient(circle at 50% 50%, var(--accent) 0 18%, #1c1a15 20% 100%);
+  border: 2px solid var(--accent);
+}
+.retro-hero-brand { font-family: var(--font-heading); font-size: 16px; color: var(--accent); line-height: 1; }
+.retro-month-badge {
+  padding: 5px 12px; border-radius: 999px; background: rgba(255, 255, 255, 0.07);
+  font-size: 12px; font-weight: 700; color: #cfc18a; letter-spacing: 0.02em;
+}
+
+.retro-scope-toggle { display: flex; gap: 5px; padding: 4px; border-radius: 999px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.06); }
+.retro-scope-btn {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 9px 10px; min-height: 40px; border: none; border-radius: 999px; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 700;
+  background: transparent; color: #a8a294;
+}
+.retro-scope-btn .icon { width: 15px; height: 15px; }
+.retro-scope-btn.active { background: var(--accent); color: var(--accent-contrast); }
+
+.retro-hero-title { margin: 0 0 4px; font-family: var(--font-heading); font-weight: 400; font-size: 32px; line-height: 1.05; letter-spacing: -0.01em; }
+.retro-hero-subtitle { margin: 0; font-size: 13.5px; line-height: 1.4; color: #a8a294; }
+
+.retro-stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.retro-stat-box { padding: 12px 10px; border-radius: 16px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.06); }
+.retro-stat-box-value { font-family: var(--font-heading); font-size: 24px; line-height: 1; color: var(--accent); }
+.retro-stat-box-label { margin-top: 4px; font-size: 10.5px; line-height: 1.25; color: var(--text-dim); font-weight: 600; }
+
+/* — seletor de mes — */
+.retro-month-picker { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.retro-month-picker::-webkit-scrollbar { display: none; }
+.retro-month-chip {
+  flex: 0 0 auto; padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--bg-elevated); color: var(--text-dim); font-family: inherit;
+  font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.retro-month-chip:hover { background: var(--bg-hover); color: var(--text); }
+.retro-month-chip.active { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
+
+.retro-empty { background: var(--bg-elevated); border-radius: 16px; padding: 28px 20px; text-align: center; color: var(--text-dim); font-size: 14px; }
+
+.retro-content { display: flex; flex-direction: column; gap: 16px; }
+
+/* — cards genericos (artistas/musicas/dia/semana) — */
+.retro-card { padding: 18px 18px 16px; border-radius: 26px; background: var(--bg-elevated); border: 1px solid #23211c; display: flex; flex-direction: column; gap: 14px; }
+.retro-card-header { display: flex; align-items: baseline; gap: 10px; }
+.retro-card-header h2 { margin: 0; font-family: var(--font-heading); font-weight: 400; font-size: 19px; line-height: 1; flex: 1; }
+.retro-card-tag, .retro-card-tag-plain { font-size: 11px; color: var(--text-dim2); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.retro-card-tag-plain { font-weight: 400; letter-spacing: normal; text-transform: none; font-size: 12px; }
+
+.retro-artist-list, .retro-track-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.retro-artist-row { display: flex; align-items: center; gap: 13px; padding: 9px 0; border-top: 1px solid #221f1a; }
+.retro-artist-row:first-child { border-top: none; }
+.retro-artist-index, .retro-track-index { flex: none; width: 17px; text-align: center; font-family: var(--font-heading); font-size: 15px; color: var(--text-dim2); }
+.retro-artist-row.rank-1 .retro-artist-index { color: var(--accent); }
+.retro-artist-art { width: 42px; height: 42px; flex: none; border-radius: 999px; background: linear-gradient(140deg, #6d4b2f, #2b2119); }
+.retro-artist-text, .retro-track-text { flex: 1; min-width: 0; }
+.retro-artist-name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.retro-artist-plays { font-size: 12px; color: var(--text-dim3); }
+.retro-artist-bar-track { width: 58px; flex: none; height: 5px; border-radius: 999px; background: #221f1a; overflow: hidden; }
+.retro-artist-bar-fill { height: 100%; border-radius: 999px; background: #4a4426; }
+.retro-artist-row.rank-1 .retro-artist-bar-fill { background: var(--accent); }
+
+.retro-track-row { display: flex; align-items: center; gap: 12px; }
+.retro-track-row + .retro-track-row { margin-top: 8px; }
+.retro-track-art { width: 40px; height: 40px; flex: none; border-radius: 11px; background: linear-gradient(140deg, #6d4b2f, #2b2119); }
+.retro-track-title { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.retro-track-artist { font-size: 12px; color: var(--text-dim3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.retro-track-plays { flex: none; font-size: 12px; color: var(--text-dim2); font-variant-numeric: tabular-nums; }
+
+/* — dia mais ouvido / quem mais pediu — */
+.retro-side-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.retro-side-card { padding: 16px; gap: 10px; }
+.retro-side-kicker { font-size: 10.5px; color: var(--text-dim2); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.retro-side-value { font-family: var(--font-heading); font-size: 21px; line-height: 1.1; color: var(--accent); }
+.retro-side-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.retro-side-tag { padding: 4px 9px; border-radius: 999px; background: #221f1a; font-size: 11px; font-weight: 600; color: var(--text-dim); }
+.retro-side-person { display: flex; align-items: center; gap: 10px; }
+.retro-side-avatar { width: 36px; height: 36px; border-radius: 999px; flex: none; background: linear-gradient(140deg, #6d5a8a, #241d33); }
+.retro-side-person-text { min-width: 0; }
+.retro-side-name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.retro-side-meta { font-size: 12px; color: var(--text-dim3); }
+.retro-side-note { font-size: 12px; line-height: 1.4; color: var(--text-dim3); }
+
+/* — minutos por semana — */
+.retro-week-chart { display: flex; align-items: flex-end; gap: 10px; height: 84px; }
+.retro-week-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 7px; height: 100%; justify-content: flex-end; }
+.retro-week-value { font-size: 11.5px; color: #a8a294; font-weight: 700; }
+.retro-week-bar { width: 100%; border-radius: 10px 10px 4px 4px; background: #3a3624; min-height: 3px; }
+.retro-week-col.peak .retro-week-bar { background: var(--accent); }
+.retro-week-label { font-size: 11px; color: var(--text-dim2); }
+
+/* — acoes (compartilhar/baixar) — */
+.retro-actions-row { display: flex; align-items: center; gap: 10px; }
+.retro-share-btn {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  padding: 14px 20px; min-height: 50px; border: none; border-radius: 999px;
+  background: var(--accent); color: var(--accent-contrast);
+  font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+}
+.retro-share-btn:hover { background: #f4e26b; }
+.retro-share-btn .icon { width: 17px; height: 17px; }
+.retro-icon-btn {
+  width: 50px; height: 50px; flex: none; display: grid; place-items: center;
+  border: 1px solid var(--border-soft); border-radius: 999px; background: transparent;
+  color: var(--text-bright); cursor: pointer;
+}
+.retro-icon-btn:hover { background: var(--bg-hover); }
+.retro-icon-btn .icon { width: 17px; height: 17px; }
+.retro-closed-note { text-align: center; font-size: 12px; color: var(--text-dim2); padding-top: 2px; }
+
+/* — modal de compartilhar: card final (canvas) + acoes — */
+.retro-share-modal-content {
+  background: transparent; padding: 0; width: min(340px, 92vw); max-height: 92vh;
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+}
+.retro-capsule-canvas {
+  width: 100%; aspect-ratio: 9 / 16; border-radius: 22px;
+  box-shadow: 0 50px 100px -30px rgba(0, 0, 0, 0.7); background: var(--bg-elevated);
+}
+.retro-share-modal-actions { width: 100%; display: flex; align-items: center; gap: 10px; }
+.retro-share-modal-actions .discord-btn { flex: 1; }
+
+@media (min-width: 900px) {
+  .retro-page { padding: 0; max-width: none; }
+  .retro-hero { padding: 30px 28px 26px; }
+  .retro-hero-title { font-size: 38px; }
+  .retro-side-grid { max-width: 100%; }
+}

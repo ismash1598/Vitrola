@@ -189,6 +189,12 @@
     // ANTERIOR (cada stream e amarrado ao guildId de quando foi aberto) -
     // mais seguro desligar e a pessoa religar se quiser, no servidor novo.
     setBrowserListen(false);
+    // A capsula do tempo e por servidor - se a aba ja estiver aberta,
+    // recarrega pro servidor novo em vez de continuar mostrando a antiga.
+    if (document.getElementById('tab-history').classList.contains('active')) {
+      retroSelectedMonth = null;
+      loadRetrospectiveMonths().then(loadRetrospective);
+    }
   });
 
   document.getElementById('force-reset-btn').addEventListener('click', async () => {
@@ -1751,6 +1757,374 @@
     if (e.key === 'Escape' && !npFullscreenEl.classList.contains('hidden')) {
       exitNowPlayingFullscreen();
     }
+  });
+
+  // ---------- Histórico / Cápsula do tempo (retrospectiva mensal, modo
+  // servidor ou pessoal) - portado de "template html/Vitrola Capsula.html" ----------
+  const retroMonthPickerEl = document.getElementById('retro-month-picker');
+  const retroEmptyEl = document.getElementById('retro-empty');
+  const retroContentEl = document.getElementById('retro-content');
+  const retroShareModalEl = document.getElementById('retro-share-modal');
+  const retroCanvasEl = document.getElementById('retro-capsule-canvas');
+  let retroSelectedMonth = null; // "YYYY-MM"; null ainda nao escolheu (usa o mes atual)
+  let retroScope = 'server'; // 'server' | 'personal'
+  let retroCurrentData = null;
+
+  const MONTH_NAMES = [
+    'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+    'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+  ];
+
+  function formatMonthLabel(monthKeyStr) {
+    const [year, month] = monthKeyStr.split('-').map(Number);
+    return `${MONTH_NAMES[month - 1]} ${year}`;
+  }
+
+  function formatDayLabel(dateKeyStr) {
+    const [, month, day] = dateKeyStr.split('-').map(Number);
+    return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}`;
+  }
+
+  async function loadRetrospectiveMonths() {
+    const guildId = settings.currentGuildId;
+    if (!currentUser || !guildId) return;
+    let months;
+    try {
+      months = await api(`/retrospective/months?guildId=${encodeURIComponent(guildId)}`);
+    } catch (err) {
+      console.error('Erro ao carregar meses da retrospectiva:', err.message);
+      return;
+    }
+
+    const currentMonthKey = new Date().toISOString().slice(0, 7);
+    if (!months.includes(currentMonthKey)) months = [currentMonthKey, ...months];
+    if (!retroSelectedMonth) retroSelectedMonth = currentMonthKey;
+
+    retroMonthPickerEl.innerHTML = '';
+    months.forEach((m) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'retro-month-chip';
+      btn.classList.toggle('active', m === retroSelectedMonth);
+      btn.textContent = m === currentMonthKey ? 'Este mês' : formatMonthLabel(m);
+      btn.addEventListener('click', () => {
+        retroSelectedMonth = m;
+        retroMonthPickerEl.querySelectorAll('.retro-month-chip').forEach((c) => c.classList.remove('active'));
+        btn.classList.add('active');
+        loadRetrospective();
+      });
+      retroMonthPickerEl.appendChild(btn);
+    });
+  }
+
+  function setRetroScope(scope) {
+    retroScope = scope;
+    document.getElementById('retro-scope-server').classList.toggle('active', scope === 'server');
+    document.getElementById('retro-scope-personal').classList.toggle('active', scope === 'personal');
+    document.getElementById('retro-plays-label').textContent = scope === 'server' ? 'músicas tocadas' : 'músicas pedidas';
+    loadRetrospective();
+  }
+  document.getElementById('retro-scope-server').addEventListener('click', () => setRetroScope('server'));
+  document.getElementById('retro-scope-personal').addEventListener('click', () => setRetroScope('personal'));
+
+  function currentGuildName() {
+    const opt = guildSelectEl.querySelector(`option[value="${CSS.escape(settings.currentGuildId || '')}"]`);
+    return opt ? opt.textContent : 'seu servidor';
+  }
+
+  async function loadRetrospective() {
+    const guildId = settings.currentGuildId;
+    if (!currentUser || !guildId) return;
+    const month = retroSelectedMonth || new Date().toISOString().slice(0, 7);
+    let data;
+    try {
+      data = await api(`/retrospective?guildId=${encodeURIComponent(guildId)}&scope=${retroScope}&month=${encodeURIComponent(month)}`);
+    } catch (err) {
+      console.error('Erro ao carregar retrospectiva:', err.message);
+      return;
+    }
+    retroCurrentData = data;
+
+    document.getElementById('retro-month-badge').textContent = formatMonthLabel(data.month);
+
+    const isCurrentMonth = data.month === new Date().toISOString().slice(0, 7);
+    const periodo = isCurrentMonth ? 'neste mês' : `em ${formatMonthLabel(data.month)}`;
+    document.getElementById('retro-subtitle').textContent =
+      retroScope === 'server'
+        ? `O que o servidor ${currentGuildName()} ouviu ${periodo}.`
+        : `O que você, ${currentUser.username}, ouviu ${periodo}.`;
+
+    if (!data.totalPlays) {
+      retroEmptyEl.classList.remove('hidden');
+      retroContentEl.classList.add('hidden');
+      document.getElementById('retro-total-minutes').textContent = '0';
+      document.getElementById('retro-total-plays').textContent = '0';
+      document.getElementById('retro-distinct-artists').textContent = '0';
+      return;
+    }
+    retroEmptyEl.classList.add('hidden');
+    retroContentEl.classList.remove('hidden');
+
+    document.getElementById('retro-total-minutes').textContent = data.totalMinutes;
+    document.getElementById('retro-total-plays').textContent = data.totalPlays;
+    document.getElementById('retro-distinct-artists').textContent = data.distinctArtists;
+
+    const artistsListEl = document.getElementById('retro-top-artists');
+    artistsListEl.innerHTML = '';
+    const maxArtistPlays = data.topArtists[0]?.count || 1;
+    data.topArtists.forEach((a, i) => {
+      const [artFrom, artTo] = PLACEHOLDER_GRADIENTS[hashStr(a.name) % PLACEHOLDER_GRADIENTS.length];
+      const barPct = Math.round((a.count / maxArtistPlays) * 100);
+      const li = document.createElement('li');
+      li.className = `retro-artist-row${i === 0 ? ' rank-1' : ''}`;
+      li.innerHTML = `
+        <span class="retro-artist-index">${i + 1}</span>
+        <div class="retro-artist-art" style="background: linear-gradient(140deg, ${artFrom}, ${artTo})"></div>
+        <div class="retro-artist-text">
+          <div class="retro-artist-name">${escapeHtml(a.name)}</div>
+          <div class="retro-artist-plays">${a.count} execuç${a.count === 1 ? 'ão' : 'ões'}</div>
+        </div>
+        <div class="retro-artist-bar-track"><div class="retro-artist-bar-fill" style="width: ${barPct}%"></div></div>
+      `;
+      artistsListEl.appendChild(li);
+    });
+
+    const tracksListEl = document.getElementById('retro-top-tracks');
+    tracksListEl.innerHTML = '';
+    data.topTracks.forEach((t, i) => {
+      const [artFrom, artTo] = PLACEHOLDER_GRADIENTS[hashStr(t.name) % PLACEHOLDER_GRADIENTS.length];
+      const li = document.createElement('li');
+      li.className = 'retro-track-row';
+      li.innerHTML = `
+        <span class="retro-track-index"${i === 0 ? ' style="color: var(--accent)"' : ''}>${i + 1}</span>
+        <div class="retro-track-art" style="background: linear-gradient(140deg, ${artFrom}, ${artTo})"></div>
+        <div class="retro-track-text">
+          <div class="retro-track-title">${escapeHtml(t.name)}</div>
+          <div class="retro-track-artist">${escapeHtml((t.artists || []).join(', '))}</div>
+        </div>
+        <span class="retro-track-plays">${t.count}×</span>
+      `;
+      tracksListEl.appendChild(li);
+    });
+
+    // "Dia mais ouvido": substitui o card de genero do template original -
+    // nao temos dado de genero musical (Spotify so da isso por artista, via
+    // chamada extra que nao fazemos hoje), entao usamos algo que ja
+    // calculamos de verdade: o dia do mes com mais minutos ouvidos.
+    const [topDay, ...otherDays] = data.topDays;
+    document.getElementById('retro-top-day-value').textContent = topDay ? `${formatDayLabel(topDay.date)} · ${topDay.minutes} min` : '—';
+    const tagsEl = document.getElementById('retro-top-day-tags');
+    tagsEl.innerHTML = '';
+    otherDays.forEach((d) => {
+      const span = document.createElement('span');
+      span.className = 'retro-side-tag';
+      span.textContent = `${formatDayLabel(d.date)} · ${d.minutes}min`;
+      tagsEl.appendChild(span);
+    });
+
+    document.getElementById('retro-side-title').textContent = data.side.title;
+    document.getElementById('retro-side-name').textContent = data.side.name;
+    document.getElementById('retro-side-meta').textContent = data.side.meta;
+    document.getElementById('retro-side-note').textContent = data.side.note;
+
+    const peakWeek = Math.max(...data.weeklyMinutes.map((w) => w.minutes), 1);
+    document.getElementById('retro-week-peak').textContent = (() => {
+      const peakEntry = data.weeklyMinutes.find((w) => w.minutes === peakWeek);
+      return peakEntry && peakEntry.minutes > 0 ? `pico na semana ${peakEntry.week}` : '';
+    })();
+    const weekChartEl = document.getElementById('retro-week-chart');
+    weekChartEl.innerHTML = '';
+    data.weeklyMinutes.forEach((w) => {
+      const isPeak = w.minutes === peakWeek && w.minutes > 0;
+      const col = document.createElement('div');
+      col.className = `retro-week-col${isPeak ? ' peak' : ''}`;
+      const heightPct = Math.max(4, Math.round((w.minutes / peakWeek) * 100));
+      col.innerHTML = `
+        <div class="retro-week-value">${w.minutes}</div>
+        <div class="retro-week-bar" style="height: ${heightPct}%"></div>
+        <div class="retro-week-label">sem ${w.week}</div>
+      `;
+      weekChartEl.appendChild(col);
+    });
+  }
+
+  // Corta o texto (com "…") pra caber na largura maxima - canvas nao quebra
+  // linha nem trunca sozinho como o CSS faz.
+  function truncateCanvasText(ctx, text, maxWidth) {
+    if (ctx.measureText(text).width <= maxWidth) return text;
+    let truncated = text;
+    while (truncated.length > 1 && ctx.measureText(`${truncated}…`).width > maxWidth) {
+      truncated = truncated.slice(0, -1);
+    }
+    return `${truncated}…`;
+  }
+
+  // Desenha o card final (formato "story", 9:16) inteiramente no canvas -
+  // sem lib nenhuma, e sem desenhar capa de album de verdade (evitaria o
+  // risco de "tainted canvas" se a imagem de terceiro nao mandar CORS
+  // liberado, o que quebraria o toBlob() na hora de exportar) - o "hero"
+  // usa o mesmo gradiente placeholder do artista #1 que a lista já mostra.
+  function drawRetroCapsule(data, scope) {
+    const ctx = retroCanvasEl.getContext('2d');
+    const W = retroCanvasEl.width;
+    const H = retroCanvasEl.height;
+    const pad = 52;
+    const heroH = H * 0.22;
+
+    const topArtistName = data.topArtists[0]?.name || 'Vitrola';
+    const [heroFrom, heroTo] = PLACEHOLDER_GRADIENTS[hashStr(topArtistName) % PLACEHOLDER_GRADIENTS.length];
+    const hero = ctx.createLinearGradient(0, 0, W, heroH);
+    hero.addColorStop(0, heroFrom);
+    hero.addColorStop(1, heroTo);
+    ctx.fillStyle = hero;
+    ctx.fillRect(0, 0, W, heroH);
+
+    ctx.fillStyle = '#0e0d0b';
+    ctx.fillRect(0, heroH, W, H - heroH);
+
+    const fade = ctx.createLinearGradient(0, heroH - 90, 0, heroH);
+    fade.addColorStop(0, 'rgba(14,13,11,0)');
+    fade.addColorStop(1, '#0e0d0b');
+    ctx.fillStyle = fade;
+    ctx.fillRect(0, heroH - 90, W, 90);
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+
+    ctx.fillStyle = '#e9d34a';
+    ctx.font = '700 24px Georgia, serif';
+    ctx.fillText('◉ Vitrola', pad, 56);
+    ctx.fillStyle = '#d8d0be';
+    ctx.font = '600 16px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }), W - pad, 56);
+    ctx.textAlign = 'left';
+
+    let y = heroH + 66;
+    ctx.fillStyle = '#f2ece0';
+    ctx.font = '700 40px Georgia, serif';
+    const title = scope === 'server' ? `A cápsula sonora do ${currentGuildName()}` : `Minha cápsula sonora de ${MONTH_NAMES[Number(data.month.split('-')[1]) - 1]}`;
+    wrapCanvasText(ctx, title, W - pad * 2, 2).forEach((line) => {
+      ctx.fillText(line, pad, y);
+      y += 46;
+    });
+
+    y += 34;
+    const colW = (W - pad * 2 - 30) / 2;
+    ctx.fillStyle = '#f2ece0';
+    ctx.font = '700 20px sans-serif';
+    ctx.fillText('Artistas favoritos', pad, y);
+    ctx.fillText('Músicas favoritas', pad + colW + 30, y);
+
+    ctx.font = '500 19px sans-serif';
+    ctx.fillStyle = '#cfc7b2';
+    data.topArtists.slice(0, 5).forEach((a, i) => {
+      ctx.fillText(truncateCanvasText(ctx, `${i + 1} ${a.name}`, colW), pad, y + 40 + i * 34);
+    });
+    data.topTracks.slice(0, 5).forEach((t, i) => {
+      ctx.fillText(truncateCanvasText(ctx, `${i + 1} ${t.name}`, colW), pad + colW + 30, y + 40 + i * 34);
+    });
+
+    y += 40 + 5 * 34 + 50;
+    ctx.fillStyle = '#f2ece0';
+    ctx.font = '700 20px sans-serif';
+    ctx.fillText('Tempo ouvindo', pad, y);
+    ctx.fillStyle = '#e9d34a';
+    ctx.font = '700 52px Georgia, serif';
+    ctx.fillText(`${data.totalMinutes} minutos`, pad, y + 54);
+
+    ctx.fillStyle = '#7d776a';
+    ctx.font = '600 16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('feito com Vitrola', W / 2, H - 36);
+    ctx.textAlign = 'left';
+  }
+
+  // Quebra o texto em ate maxLines linhas, cada uma cabendo em maxWidth -
+  // usado so pro titulo do card (nome de servidor pode ser longo).
+  function wrapCanvasText(ctx, text, maxWidth, maxLines) {
+    const words = text.split(' ');
+    const lines = [];
+    let current = '';
+    for (const word of words) {
+      const attempt = current ? `${current} ${word}` : word;
+      if (ctx.measureText(attempt).width > maxWidth && current) {
+        lines.push(current);
+        current = word;
+        if (lines.length === maxLines - 1) break;
+      } else {
+        current = attempt;
+      }
+    }
+    if (current && lines.length < maxLines) lines.push(current);
+    if (lines.length === maxLines) {
+      lines[maxLines - 1] = truncateCanvasText(ctx, lines[maxLines - 1], maxWidth);
+    }
+    return lines;
+  }
+
+  function retroCanvasToBlob() {
+    return new Promise((resolve) => retroCanvasEl.toBlob(resolve, 'image/png'));
+  }
+
+  function openRetroShareModal() {
+    if (!retroCurrentData || !retroCurrentData.totalPlays) {
+      showToast('Nada pra compartilhar ainda esse mês.');
+      return;
+    }
+    drawRetroCapsule(retroCurrentData, retroScope);
+    retroShareModalEl.classList.remove('hidden');
+  }
+  function closeRetroShareModal() {
+    retroShareModalEl.classList.add('hidden');
+  }
+
+  async function downloadRetroCapsule() {
+    const blob = await retroCanvasToBlob();
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vitrola-capsula-${retroSelectedMonth || 'mes'}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function shareRetroCapsule() {
+    const blob = await retroCanvasToBlob();
+    if (!blob) return;
+    const file = new File([blob], 'vitrola-capsula.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'Minha cápsula do tempo no Vitrola' });
+        return;
+      } catch {
+        // usuario cancelou o compartilhamento, ou o navegador recusou - cai
+        // pro download normal em vez de nao fazer nada.
+      }
+    }
+    await downloadRetroCapsule();
+  }
+
+  document.getElementById('retro-share-btn').addEventListener('click', openRetroShareModal);
+  document.getElementById('retro-share-close-btn').addEventListener('click', closeRetroShareModal);
+  document.getElementById('retro-download-btn').addEventListener('click', () => {
+    if (!retroCurrentData || !retroCurrentData.totalPlays) return;
+    drawRetroCapsule(retroCurrentData, retroScope);
+    downloadRetroCapsule();
+  });
+  document.getElementById('retro-share-confirm-btn').addEventListener('click', shareRetroCapsule);
+  document.getElementById('retro-share-download-btn').addEventListener('click', downloadRetroCapsule);
+  retroShareModalEl.addEventListener('click', (e) => {
+    if (e.target === retroShareModalEl) closeRetroShareModal();
+  });
+
+  document.querySelectorAll('.tab-btn[data-tab="history"]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      loadRetrospectiveMonths().then(loadRetrospective);
+    });
   });
 
   // ---------- Inicialização ----------
