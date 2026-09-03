@@ -1,4 +1,12 @@
 const { spawn, execFileSync } = require('child_process');
+const { EventEmitter } = require('events');
+
+// Emite 'trackStart' com { guildId, track } toda vez que uma faixa REALMENTE
+// comeca a tocar (nao so quando e adicionada na fila). Quem grava
+// historico/retrospectiva escuta esse evento (ver trackPlayTracker.js) -
+// esse arquivo fica sem saber nada de banco de dados ou do client do
+// Discord de proposito, so toca audio.
+const playerEvents = new EventEmitter();
 
 // O binario generico baixado pelo pacote ffmpeg-static falha pra resolver
 // hostnames novos (tipo os do CDN de video do YouTube, que mudam a cada
@@ -52,7 +60,7 @@ const EMPTY_CHANNEL_TIMEOUT_MS = 90_000; // 1min30s sozinho no canal -> sai
 
 // Um player independente por servidor Discord: cada guilda toca sua propria
 // fila/musica, com seu proprio autoplay e conexao de voz.
-function createGuildPlayer() {
+function createGuildPlayer(guildId) {
   const audioPlayer = createAudioPlayer();
 
   let connection = null;
@@ -323,6 +331,17 @@ function createGuildPlayer() {
 
     audioPlayer.play(resource);
 
+    // So conta como "tocou" (pro historico/retrospectiva) na PRIMEIRA vez
+    // que essa faixa realmente comeca a soar - startFfmpegAndPlay tambem e
+    // chamado de novo pra reiniciar a MESMA faixa em seek/troca de volume,
+    // e isso nao pode contar como uma segunda reproducao. A flag fica no
+    // proprio objeto da faixa (junto de _youtube/_audioUrl), entao uma
+    // faixa nova (objeto novo) sempre comeca sem ela.
+    if (currentTrack && !currentTrack._playRecorded) {
+      currentTrack._playRecorded = true;
+      playerEvents.emit('trackStart', { guildId, track: currentTrack });
+    }
+
     // A faixa atual ja esta tocando - aproveita pra ja resolver o audio da
     // proxima da fila em segundo plano, pra quando ela realmente for tocar
     // (fim natural ou skip) nao precisar esperar a busca no YouTube de novo.
@@ -478,8 +497,8 @@ function createGuildPlayer() {
   // Adicionar uma musica NUNCA interrompe o que esta tocando: ela entra na
   // fila (na frente, se playNext=true) e so comeca a tocar quando a atual
   // acabar ou for pulada. So comeca imediatamente se nao havia nada tocando.
-  function enqueue(track, playNext = false, addedBy = null) {
-    const item = { ...track, addedBy };
+  function enqueue(track, playNext = false, addedBy = null, addedByUsername = null) {
+    const item = { ...track, addedBy, addedByUsername };
     if (playNext) {
       queue.unshift(item);
     } else {
@@ -493,8 +512,8 @@ function createGuildPlayer() {
 
   // Mesma logica de "nunca interromper", mas para uma playlist inteira: todas
   // as faixas entram no inicio da fila, na ordem da playlist.
-  function playPlaylistNext(tracks, addedBy = null) {
-    const items = tracks.map((t) => ({ ...t, addedBy }));
+  function playPlaylistNext(tracks, addedBy = null, addedByUsername = null) {
+    const items = tracks.map((t) => ({ ...t, addedBy, addedByUsername }));
     queue.unshift(...items);
     if (!currentTrack) {
       advanceQueue();
@@ -724,7 +743,7 @@ const players = new Map(); // guildId -> GuildPlayer
 
 function getPlayer(guildId) {
   if (!players.has(guildId)) {
-    players.set(guildId, createGuildPlayer());
+    players.set(guildId, createGuildPlayer(guildId));
   }
   return players.get(guildId);
 }
@@ -733,4 +752,4 @@ function hasPlayer(guildId) {
   return players.has(guildId);
 }
 
-module.exports = { getPlayer, hasPlayer };
+module.exports = { getPlayer, hasPlayer, playerEvents };

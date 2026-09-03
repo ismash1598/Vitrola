@@ -44,6 +44,17 @@ async function ensureVoiceForUser(client, guildId, userId) {
   return player;
 }
 
+// Usado tanto pra proteger rotas (requireSameVoiceChannel abaixo) quanto
+// pra decidir, na hora que uma faixa REALMENTE comeca a tocar, se quem
+// pediu ainda esta la pra receber o credito no historico pessoal (ver
+// trackPlayTracker.js) - por isso devolve booleano em vez de lancar.
+function isUserInChannel(client, guildId, userId, channelId) {
+  if (!channelId) return false;
+  const guild = client.guilds.cache.get(guildId);
+  const voiceState = guild?.voiceStates.cache.get(userId);
+  return voiceState?.channelId === channelId;
+}
+
 // Igual a checagem acima, mas so valida (nunca conecta o bot em lugar
 // nenhum) - usada para acoes sobre uma fila que ja existe, como reordenar ou
 // remover itens. Se o bot nao esta tocando em nenhum canal ainda, nao ha o
@@ -52,9 +63,7 @@ function requireSameVoiceChannel(client, guildId, userId, player) {
   const botChannelId = player.getVoiceChannelId();
   if (!botChannelId) return;
 
-  const guild = client.guilds.cache.get(guildId);
-  const voiceState = guild?.voiceStates.cache.get(userId);
-  if (voiceState?.channelId !== botChannelId) {
+  if (!isUserInChannel(client, guildId, userId, botChannelId)) {
     throw forbidden('Você não está no mesmo canal de voz que o bot.');
   }
 }
@@ -86,6 +95,7 @@ module.exports = {
   isMutualGuild,
   ensureVoiceForUser,
   requireSameVoiceChannel,
+  isUserInChannel,
   isGuildAdmin,
   requireTrackOwnerOrAdmin,
 };

@@ -173,10 +173,13 @@ router.post(
 
     // Nunca interrompe o que esta tocando: so entra na fila (na frente, se
     // playNext) e comeca a tocar sozinha se nao havia nada rodando.
+    //
+    // Historico/retrospectiva NAO sao gravados aqui - so adicionar na fila
+    // nao significa que a musica vai tocar de verdade (pode ser pulada,
+    // removida, ou a fila pode demorar). Isso e gravado so quando a faixa
+    // REALMENTE comeca a tocar (ver trackPlayTracker.js).
     const player = await ensureVoiceForUser(bot.client, req.guildId, req.user.id);
-    player.enqueue(track, Boolean(req.body.playNext), req.user.id);
-    history.recordHistory(req.user.id, track);
-    listeningLog.recordPlay(req.user.id, req.user.username, req.guildId, track);
+    player.enqueue(track, Boolean(req.body.playNext), req.user.id, req.user.username);
     res.json(player.getStatus());
   })
 );
@@ -494,7 +497,7 @@ router.post(
     // ensureVoiceForUser cuida da checagem de canal (e conecta o bot se for
     // a primeira faixa) - por isso essa rota nao usa requireVoicePeer.
     const player = await ensureVoiceForUser(bot.client, req.guildId, req.user.id);
-    player.playPlaylistNext(playlist.tracks, req.user.id);
+    player.playPlaylistNext(playlist.tracks, req.user.id, req.user.username);
     res.json(player.getStatus());
   })
 );

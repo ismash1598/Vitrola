@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { requireSameVoiceChannel, requireTrackOwnerOrAdmin } = require('../src/discord/guilds');
+const { requireSameVoiceChannel, requireTrackOwnerOrAdmin, isUserInChannel } = require('../src/discord/guilds');
 const { canView, canEdit } = require('../src/db/playlists');
 
 function clienteComUsuarioEm(canalDoUsuario) {
@@ -45,6 +45,23 @@ test('nao exige canal quando o bot nao esta tocando em lugar nenhum', () => {
   assert.doesNotThrow(() =>
     requireSameVoiceChannel(clienteComUsuarioEm(null), 'g1', 'u1', playerNoCanal(null))
   );
+});
+
+// ---- Presenca no canal (usado pro credito pessoal de historico/retrospectiva) ----
+// F: registrar historico so quando quem pediu ainda esta na call quando a
+// musica toca de verdade (ver trackPlayTracker.js).
+
+test('isUserInChannel confirma quem esta no canal certo', () => {
+  assert.equal(isUserInChannel(clienteComUsuarioEm('canal-A'), 'g1', 'u1', 'canal-A'), true);
+});
+
+test('isUserInChannel nega quem esta em outro canal ou fora de canal nenhum', () => {
+  assert.equal(isUserInChannel(clienteComUsuarioEm('canal-B'), 'g1', 'u1', 'canal-A'), false);
+  assert.equal(isUserInChannel(clienteComUsuarioEm(null), 'g1', 'u1', 'canal-A'), false);
+});
+
+test('isUserInChannel nega quando nao ha canal do bot pra comparar', () => {
+  assert.equal(isUserInChannel(clienteComUsuarioEm('canal-A'), 'g1', 'u1', null), false);
 });
 
 // ---- Posse de faixa (skip / remover da fila / reordenar) ----

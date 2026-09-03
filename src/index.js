@@ -8,6 +8,9 @@ const express = require('express');
 const bot = require('./discord/bot');
 const apiRoutes = require('./api/routes');
 const authRoutes = require('./api/authRoutes');
+// So pelo efeito colateral: liga o evento de "faixa comecou a tocar" do
+// guildPlayers ao registro de historico/retrospectiva (ver trackPlayTracker.js).
+require('./discord/trackPlayTracker');
 
 const app = express();
 app.use(express.json());

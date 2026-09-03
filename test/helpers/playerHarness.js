@@ -144,11 +144,12 @@ function montarPlayer(opts = {}) {
     parseYoutubeTitle: (t) => ({ name: t, artists: [] }),
   });
 
-  const { getPlayer } = require('../../src/discord/guildPlayers');
+  const { getPlayer, playerEvents } = require('../../src/discord/guildPlayers');
   const player = getPlayer(`teste-${Math.random()}`);
 
   return {
     player,
+    playerEvents,
     processos,
     chamadas,
     audioPlayer,

@@ -252,6 +252,74 @@ test('arrastar o volume so reinicia o audio uma vez, depois de parar', async (t)
   );
 });
 
+// O evento 'trackStart' e o que liga a reproducao de verdade ao registro de
+// historico/retrospectiva (ver trackPlayTracker.js) - so adicionar na fila
+// NAO deveria contar como "ouvida" (ver o bug relatado: toda faixa
+// adicionada entrava direto no historico, mesmo sem nunca ter tocado).
+test('trackStart dispara quando a faixa comeca a tocar de verdade, nao ao ser enfileirada', async (t) => {
+  const h = montarPlayer();
+  t.after(() => h.restaurar());
+
+  const eventos = [];
+  h.playerEvents.on('trackStart', (e) => eventos.push(e));
+
+  h.player.enqueue(faixa('a'), false, 'user-1', 'Fulano');
+  assert.equal(eventos.length, 0, 'nao deveria disparar so por entrar na fila');
+
+  await h.assentar();
+  assert.equal(eventos.length, 1);
+  assert.equal(eventos[0].track.id, 'a');
+  assert.equal(eventos[0].track.addedBy, 'user-1');
+  assert.equal(eventos[0].track.addedByUsername, 'Fulano');
+});
+
+test('trackStart nao dispara de novo quando a mesma faixa reinicia (seek)', async (t) => {
+  const h = montarPlayer();
+  t.after(() => h.restaurar());
+
+  const eventos = [];
+  h.player.enqueue(faixa('a'));
+  await h.assentar(20);
+  h.playerEvents.on('trackStart', (e) => eventos.push(e));
+
+  await h.player.seek(10);
+
+  assert.equal(eventos.length, 0, 'seek reinicia o audio da MESMA faixa, nao deveria contar como nova reproducao');
+});
+
+test('trackStart nao dispara de novo quando o volume reinicia o audio', async (t) => {
+  const h = montarPlayer();
+  t.after(() => h.restaurar());
+
+  h.player.enqueue(faixa('a'));
+  await h.assentar(20);
+
+  const eventos = [];
+  h.playerEvents.on('trackStart', (e) => eventos.push(e));
+
+  h.player.setVolume(0.4);
+  await new Promise((r) => setTimeout(r, 300)); // espera o debounce reiniciar o audio
+
+  assert.equal(eventos.length, 0, 'reinicio por causa do volume nao deveria contar como nova reproducao');
+});
+
+test('trackStart dispara de novo quando a fila avanca pra proxima faixa', async (t) => {
+  const h = montarPlayer();
+  t.after(() => h.restaurar());
+
+  const eventos = [];
+  h.playerEvents.on('trackStart', (e) => eventos.push(e));
+
+  h.player.enqueue(faixa('a'));
+  h.player.enqueue(faixa('b'));
+  await h.assentar();
+
+  h.processoAtual().terminarNaturalmente();
+  await h.assentar();
+
+  assert.deepEqual(eventos.map((e) => e.track.id), ['a', 'b']);
+});
+
 // skip()/advanceQueue() incrementam playToken, entao o proprio myToken do
 // setVolume ja barraria um reinicio pendente depois de um skip - esse caso
 // nao precisa do clearTimeout em killCurrentProcess pra ficar seguro.
