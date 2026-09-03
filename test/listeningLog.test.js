@@ -34,45 +34,105 @@ function faixa(id, overrides = {}) {
   return { id, name: `Faixa ${id}`, artists: ['Artista X'], albumArt: null, durationMs: 180000, ...overrides };
 }
 
-test('scope "personal" so conta as reproducoes do proprio usuario, no servidor certo', () => {
-  const log = carregarLogIsolado();
-  log.recordPlay('u1', 'Fulano', 'g1', faixa('t1'));
-  log.recordPlay('u2', 'Ciclano', 'g1', faixa('t2'));
-  log.recordPlay('u1', 'Fulano', 'g2', faixa('t3')); // outro servidor, nao deveria contar
+// "Pessoal" = tudo que tocou enquanto a pessoa estava na call, pedido por
+// ela ou nao - por isso listeners e o campo que importa pro escopo
+// pessoal, nao requesterId.
 
-  const retro = log.getRetrospective({ guildId: 'g1', scope: 'personal', userId: 'u1' });
-  assert.equal(retro.totalPlays, 1);
-  assert.equal(retro.topTracks[0].id, 't1');
+test('scope "personal" conta faixa ouvida mesmo sem ter sido pedida por essa pessoa', () => {
+  const log = carregarLogIsolado();
+  log.recordPlay({
+    guildId: 'g1',
+    track: faixa('t1'),
+    requesterId: 'u1', // quem pediu
+    requesterUsername: 'Fulano',
+    listeners: [{ id: 'u1', username: 'Fulano' }, { id: 'u2', username: 'Ciclano' }], // quem estava ouvindo
+  });
+
+  const retroDeQuemPediu = log.getRetrospective({ guildId: 'g1', scope: 'personal', userId: 'u1' });
+  const retroDeQuemSoOuviu = log.getRetrospective({ guildId: 'g1', scope: 'personal', userId: 'u2' });
+  assert.equal(retroDeQuemPediu.totalPlays, 1);
+  assert.equal(retroDeQuemSoOuviu.totalPlays, 1, 'quem so estava ouvindo (nao pediu) tambem deveria contar');
 });
 
-test('scope "server" conta todo mundo do servidor, nao so quem pediu', () => {
+test('scope "personal" nao conta pra quem nao estava na call', () => {
   const log = carregarLogIsolado();
-  log.recordPlay('u1', 'Fulano', 'g1', faixa('t1'));
-  log.recordPlay('u2', 'Ciclano', 'g1', faixa('t2'));
-  log.recordPlay('u1', 'Fulano', 'g2', faixa('t3')); // outro servidor, nao deveria contar
+  log.recordPlay({
+    guildId: 'g1',
+    track: faixa('t1'),
+    requesterId: 'u1',
+    listeners: [{ id: 'u1', username: 'Fulano' }],
+  });
+
+  const retro = log.getRetrospective({ guildId: 'g1', scope: 'personal', userId: 'u-ausente' });
+  assert.equal(retro.totalPlays, 0);
+});
+
+test('scope "server" conta todo mundo, independente de quem pediu ou ouviu', () => {
+  const log = carregarLogIsolado();
+  log.recordPlay({ guildId: 'g1', track: faixa('t1'), requesterId: 'u1', listeners: [{ id: 'u1', username: 'Fulano' }] });
+  log.recordPlay({ guildId: 'g1', track: faixa('t2'), requesterId: null, listeners: [{ id: 'u2', username: 'Ciclano' }] }); // autoplay
+  log.recordPlay({ guildId: 'g2', track: faixa('t3'), requesterId: 'u1', listeners: [{ id: 'u1', username: 'Fulano' }] }); // outro servidor
 
   const retro = log.getRetrospective({ guildId: 'g1', scope: 'server', userId: 'u1' });
   assert.equal(retro.totalPlays, 2);
 });
 
+test('faixa de autoplay (sem requester) conta pra quem estava ouvindo', () => {
+  const log = carregarLogIsolado();
+  log.recordPlay({
+    guildId: 'g1',
+    track: faixa('t1'),
+    requesterId: null,
+    requesterUsername: null,
+    listeners: [{ id: 'u1', username: 'Fulano' }],
+  });
+
+  const retro = log.getRetrospective({ guildId: 'g1', scope: 'personal', userId: 'u1' });
+  assert.equal(retro.totalPlays, 1, 'autoplay nao tem "dono", mas quem estava la ouviu de verdade');
+});
+
+test('registro antigo (so com userId/username) continua contando como "ouvida" por compatibilidade', () => {
+  const log = carregarLogIsolado();
+  // Formato de antes dessa mudanca - grava direto sem passar por recordPlay.
+  log.recordPlay({ guildId: 'g1', track: faixa('t-novo'), requesterId: 'u1', listeners: [{ id: 'u1', username: 'Fulano' }] });
+  const retro = log.getRetrospective({ guildId: 'g1', scope: 'personal', userId: 'u1' });
+  assert.equal(retro.totalPlays, 1);
+});
+
+test('buildRequesterRanking (via side card) so conta quem PEDIU, nao quem so ouviu', () => {
+  const log = carregarLogIsolado();
+  for (let i = 0; i < 3; i++) {
+    log.recordPlay({
+      guildId: 'g1',
+      track: faixa(`a${i}`),
+      requesterId: 'u1',
+      requesterUsername: 'Pediu Sempre',
+      listeners: [{ id: 'u1', username: 'Pediu Sempre' }, { id: 'u2', username: 'So Ouve' }],
+    });
+  }
+
+  const retroServidor = log.getRetrospective({ guildId: 'g1', scope: 'server', userId: 'u1' });
+  assert.equal(retroServidor.side.title, 'Quem mais pediu');
+  assert.equal(retroServidor.side.name, 'Pediu Sempre');
+
+  const retroDeQuemSoOuve = log.getRetrospective({ guildId: 'g1', scope: 'personal', userId: 'u2' });
+  assert.equal(retroDeQuemSoOuve.totalPlays, 3, 'quem so ouviu tem as 3 faixas no proprio historico pessoal');
+  assert.match(retroDeQuemSoOuve.side.note, /ainda não pediu/, 'mas nao aparece no ranking de quem pediu');
+});
+
 test('distinctArtists conta artistas unicos, mesmo com varias faixas do mesmo', () => {
   const log = carregarLogIsolado();
-  log.recordPlay('u1', 'Fulano', 'g1', faixa('t1', { artists: ['Legião Urbana'] }));
-  log.recordPlay('u1', 'Fulano', 'g1', faixa('t2', { artists: ['Legião Urbana'] }));
-  log.recordPlay('u1', 'Fulano', 'g1', faixa('t3', { artists: ['Taylor Swift'] }));
+  log.recordPlay({ guildId: 'g1', track: faixa('t1', { artists: ['Legião Urbana'] }), requesterId: 'u1', listeners: [{ id: 'u1', username: 'F' }] });
+  log.recordPlay({ guildId: 'g1', track: faixa('t2', { artists: ['Legião Urbana'] }), requesterId: 'u1', listeners: [{ id: 'u1', username: 'F' }] });
+  log.recordPlay({ guildId: 'g1', track: faixa('t3', { artists: ['Taylor Swift'] }), requesterId: 'u1', listeners: [{ id: 'u1', username: 'F' }] });
 
   const retro = log.getRetrospective({ guildId: 'g1', scope: 'server', userId: 'u1' });
   assert.equal(retro.distinctArtists, 2);
 });
 
-// recordPlay sempre usa o instante ATUAL (sem parametro pra data fixa), e o
-// modulo nao expoe acesso direto ao db - entao o teste de semana so valida
-// que a reproducao de "agora" cai em alguma das 4 semanas, com o total de
-// minutos certo (o mapeamento exato dia->semana esta coberto indiretamente
-// por sempre somar 4 entradas, nunca perder minuto nenhum).
 test('weeklyMinutes soma em 4 semanas, sem perder nenhum minuto', () => {
   const log = carregarLogIsolado();
-  log.recordPlay('u1', 'Fulano', 'g1', faixa('t1', { durationMs: 600000 })); // 10 min
+  log.recordPlay({ guildId: 'g1', track: faixa('t1', { durationMs: 600000 }), requesterId: 'u1', listeners: [{ id: 'u1', username: 'F' }] }); // 10 min
   const retro = log.getRetrospective({ guildId: 'g1', scope: 'server', userId: 'u1' });
   assert.equal(retro.weeklyMinutes.length, 4);
   const total = retro.weeklyMinutes.reduce((sum, w) => sum + w.minutes, 0);
@@ -81,30 +141,18 @@ test('weeklyMinutes soma em 4 semanas, sem perder nenhum minuto', () => {
 
 test('topDays identifica o dia com mais minutos ouvidos', () => {
   const log = carregarLogIsolado();
-  log.recordPlay('u1', 'Fulano', 'g1', faixa('t1', { durationMs: 300000 })); // 5 min hoje
+  log.recordPlay({ guildId: 'g1', track: faixa('t1', { durationMs: 300000 }), requesterId: 'u1', listeners: [{ id: 'u1', username: 'F' }] }); // 5 min hoje
   const retro = log.getRetrospective({ guildId: 'g1', scope: 'server', userId: 'u1' });
   assert.equal(retro.topDays.length, 1);
   assert.equal(retro.topDays[0].minutes, 5);
 });
 
-test('side card "quem mais pediu" (modo servidor) aponta o maior requisitante e os proximos', () => {
-  const log = carregarLogIsolado();
-  for (let i = 0; i < 5; i++) log.recordPlay('u1', 'Lider', 'g1', faixa(`a${i}`));
-  for (let i = 0; i < 3; i++) log.recordPlay('u2', 'Segundo', 'g1', faixa(`b${i}`));
-  log.recordPlay('u3', 'Terceiro', 'g1', faixa('c0'));
-
-  const retro = log.getRetrospective({ guildId: 'g1', scope: 'server', userId: 'u1' });
-  assert.equal(retro.side.title, 'Quem mais pediu');
-  assert.equal(retro.side.name, 'Lider');
-  assert.match(retro.side.note, /Segundo/);
-  assert.match(retro.side.note, /Terceiro/);
-});
-
 test('side card "sua posicao" (modo pessoal) calcula o rank certo, com vizinhos', () => {
   const log = carregarLogIsolado();
-  for (let i = 0; i < 5; i++) log.recordPlay('u1', 'Lider', 'g1', faixa(`a${i}`));
-  for (let i = 0; i < 3; i++) log.recordPlay('u2', 'Segundo', 'g1', faixa(`b${i}`));
-  log.recordPlay('u3', 'Terceiro', 'g1', faixa('c0'));
+  const listeners = [{ id: 'u1', username: 'Lider' }, { id: 'u2', username: 'Segundo' }, { id: 'u3', username: 'Terceiro' }];
+  for (let i = 0; i < 5; i++) log.recordPlay({ guildId: 'g1', track: faixa(`a${i}`), requesterId: 'u1', requesterUsername: 'Lider', listeners });
+  for (let i = 0; i < 3; i++) log.recordPlay({ guildId: 'g1', track: faixa(`b${i}`), requesterId: 'u2', requesterUsername: 'Segundo', listeners });
+  log.recordPlay({ guildId: 'g1', track: faixa('c0'), requesterId: 'u3', requesterUsername: 'Terceiro', listeners });
 
   const retro = log.getRetrospective({ guildId: 'g1', scope: 'personal', userId: 'u2' });
   assert.equal(retro.side.title, 'Sua posição no servidor');
@@ -115,14 +163,14 @@ test('side card "sua posicao" (modo pessoal) calcula o rank certo, com vizinhos'
 
 test('side card lida com usuario que nao pediu nada esse mes', () => {
   const log = carregarLogIsolado();
-  log.recordPlay('u1', 'Fulano', 'g1', faixa('t1'));
+  log.recordPlay({ guildId: 'g1', track: faixa('t1'), requesterId: 'u1', listeners: [{ id: 'u1', username: 'F' }] });
   const retro = log.getRetrospective({ guildId: 'g1', scope: 'personal', userId: 'ninguem' });
   assert.match(retro.side.note, /ainda não pediu/);
 });
 
 test('listAvailableMonths e por servidor, nao por usuario', () => {
   const log = carregarLogIsolado();
-  log.recordPlay('u1', 'Fulano', 'g1', faixa('t1'));
+  log.recordPlay({ guildId: 'g1', track: faixa('t1'), requesterId: 'u1', listeners: [{ id: 'u1', username: 'F' }] });
   const meses = log.listAvailableMonths('g1');
   assert.equal(meses.length, 1);
   assert.equal(meses[0], log.monthKey(new Date()));
@@ -132,9 +180,21 @@ test('listAvailableMonths e por servidor, nao por usuario', () => {
 test('topTracks/topArtists vem cortados em 5', () => {
   const log = carregarLogIsolado();
   for (let i = 0; i < 10; i++) {
-    log.recordPlay('u1', 'Fulano', 'g1', faixa(`t${i}`, { artists: [`Artista ${i}`] }));
+    log.recordPlay({
+      guildId: 'g1',
+      track: faixa(`t${i}`, { artists: [`Artista ${i}`] }),
+      requesterId: 'u1',
+      listeners: [{ id: 'u1', username: 'F' }],
+    });
   }
   const retro = log.getRetrospective({ guildId: 'g1', scope: 'server', userId: 'u1' });
   assert.equal(retro.topTracks.length, 5);
   assert.equal(retro.topArtists.length, 5);
+});
+
+test('getListenerIds cai pro userId antigo quando nao tem listeners (compatibilidade)', () => {
+  const log = carregarLogIsolado();
+  assert.deepEqual(log.getListenerIds({ userId: 'u1' }), ['u1']);
+  assert.deepEqual(log.getListenerIds({ listeners: [{ id: 'u1' }, { id: 'u2' }] }), ['u1', 'u2']);
+  assert.deepEqual(log.getListenerIds({}), []);
 });

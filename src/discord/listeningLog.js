@@ -25,11 +25,16 @@ const adapter = new AsyncFileAdapter(path.join(dataDir, 'listeningLog.json'), {
 const db = low(adapter);
 db.defaults({ plays: [] }).write();
 
-function recordPlay(userId, username, guildId, track) {
+// requesterId/requesterUsername: quem ADICIONOU a faixa (pode ser null -
+// autoplay, ou quem pediu ja tinha saido da call quando ela comecou a
+// tocar) - alimenta so o ranking de "quem mais pediu"/"sua posicao".
+//
+// listeners: todo mundo que estava na call no instante em que a faixa
+// comecou (array de { id, username }) - alimenta o historico PESSOAL de
+// cada um: contou como ouvida pra quem estava la, pedida ou nao.
+function recordPlay({ guildId, track, requesterId, requesterUsername, listeners }) {
   const plays = db.get('plays').value();
   plays.push({
-    userId,
-    username: username || null,
     guildId,
     trackId: track.id,
     name: track.name,
@@ -37,8 +42,23 @@ function recordPlay(userId, username, guildId, track) {
     albumArt: track.albumArt || null,
     durationMs: track.durationMs || 0,
     playedAt: new Date().toISOString(),
+    requesterId: requesterId || null,
+    requesterUsername: requesterUsername || null,
+    listeners: listeners || [],
   });
   db.write();
+}
+
+// Quem "ouviu" uma reproducao - todo mundo que estava presente. Registros
+// antigos (de antes dessa mudanca) so tinham um userId/username unico (era
+// tratado como "quem pediu" E "quem ouviu" ao mesmo tempo) - continuam
+// contando como se essa pessoa tivesse ouvido, pra nao perder historico
+// que ja existia.
+function getListenerIds(play) {
+  if (Array.isArray(play.listeners) && play.listeners.length) {
+    return play.listeners.map((l) => l.id);
+  }
+  return play.userId ? [play.userId] : [];
 }
 
 // "YYYY-MM" no fuso do servidor - identifica um mes de forma ordenavel
@@ -87,10 +107,15 @@ function dayKey(date) {
 function buildRequesterRanking(guildPlays) {
   const byUser = new Map(); // userId -> { userId, username, count }
   for (const p of guildPlays) {
-    const entry = byUser.get(p.userId) || { userId: p.userId, username: p.username || 'Alguém', count: 0 };
+    // "?? p.userId": compatibilidade com registros gravados antes dessa
+    // mudanca, que so tinham userId/username (era tratado como quem pediu).
+    const requesterId = p.requesterId ?? p.userId;
+    if (!requesterId) continue;
+    const requesterUsername = p.requesterUsername ?? p.username;
+    const entry = byUser.get(requesterId) || { userId: requesterId, username: requesterUsername || 'Alguém', count: 0 };
     entry.count += 1;
-    entry.username = p.username || entry.username; // fica com o apelido mais recente visto
-    byUser.set(p.userId, entry);
+    entry.username = requesterUsername || entry.username; // fica com o apelido mais recente visto
+    byUser.set(requesterId, entry);
   }
   return [...byUser.values()].sort((a, b) => b.count - a.count);
 }
@@ -144,7 +169,9 @@ function getRetrospective({ guildId, scope, userId, from, to } = {}) {
 
   const allPlays = db.get('plays').value();
   const guildPlays = allPlays.filter((p) => p.guildId === guildId && inRange(p, rangeFrom, rangeTo));
-  const scopedPlays = scope === 'personal' ? guildPlays.filter((p) => p.userId === userId) : guildPlays;
+  // "Pessoal" = tudo que tocou enquanto EU estava na call, pedido por mim
+  // ou nao - nao so o que eu mesmo adicionei (ver getListenerIds).
+  const scopedPlays = scope === 'personal' ? guildPlays.filter((p) => getListenerIds(p).includes(userId)) : guildPlays;
 
   const trackStats = new Map();
   const artistStats = new Map();
@@ -225,4 +252,4 @@ function inRange(play, from, to) {
   return playedAt >= from && playedAt < to;
 }
 
-module.exports = { recordPlay, getRetrospective, listAvailableMonths, monthKey, monthRange };
+module.exports = { recordPlay, getRetrospective, listAvailableMonths, monthKey, monthRange, getListenerIds };
