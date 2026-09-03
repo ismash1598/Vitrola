@@ -2177,6 +2177,194 @@
     });
   });
 
+  // ---------- Compartilhar a música tocando agora ----------
+  // Card vertical (formato story) fundo amarelo/laranja - reaproveita os
+  // mesmos helpers de canvas da Cápsula do tempo (loadImageForCanvas,
+  // drawImageCover, wrapCanvasText, truncateCanvasText).
+  const trackShareModalEl = document.getElementById('track-share-modal');
+  const trackShareCanvasEl = document.getElementById('track-share-canvas');
+
+  function roundedRectPath(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // Barrinhas de "tocando agora" (equalizador), tipo o icone que aparece
+  // no rodape do card - alturas fixas, só pra sugerir audio, sem animar
+  // (e uma imagem estática).
+  function drawEqualizerBars(ctx, x, y, h, color) {
+    const heights = [0.5, 1, 0.7, 0.85];
+    const barW = 10;
+    const gap = 8;
+    ctx.fillStyle = color;
+    heights.forEach((frac, i) => {
+      const barH = h * frac;
+      const bx = x + i * (barW + gap);
+      const by = y + (h - barH);
+      roundedRectPath(ctx, bx, by, barW, barH, barW / 2);
+      ctx.fill();
+    });
+    return heights.length * (barW + gap) - gap;
+  }
+
+  async function drawTrackShareCard(track) {
+    const canvas = trackShareCanvasEl;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width;
+    const H = canvas.height;
+    const pad = 84;
+
+    // Fundo quente (dourado no topo, marrom escuro embaixo - da contraste
+    // pro texto claro no rodape), no mesmo espirito da capa que voce mandou.
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#f0d968');
+    bg.addColorStop(0.42, '#c67139');
+    bg.addColorStop(1, '#3d2812');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Capa: quadrada, cantos arredondados, sombra.
+    const cardSize = W - pad * 2;
+    const cardX = pad;
+    const cardY = Math.round(H * 0.115);
+    const radius = 48;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.45)';
+    ctx.shadowBlur = 70;
+    ctx.shadowOffsetY = 35;
+    roundedRectPath(ctx, cardX, cardY, cardSize, cardSize, radius);
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    roundedRectPath(ctx, cardX, cardY, cardSize, cardSize, radius);
+    ctx.clip();
+    let drewArt = false;
+    if (track.albumArt) {
+      try {
+        const img = await loadImageForCanvas(track.albumArt);
+        drawImageCover(ctx, img, cardX, cardY, cardSize, cardSize);
+        drewArt = true;
+      } catch {
+        // capa nao carregou - cai no gradiente placeholder abaixo
+      }
+    }
+    if (!drewArt) {
+      const [artFrom, artTo] = PLACEHOLDER_GRADIENTS[hashStr(track.name) % PLACEHOLDER_GRADIENTS.length];
+      const g = ctx.createLinearGradient(cardX, cardY, cardX + cardSize, cardY + cardSize);
+      g.addColorStop(0, artFrom);
+      g.addColorStop(1, artTo);
+      ctx.fillStyle = g;
+      ctx.fillRect(cardX, cardY, cardSize, cardSize);
+    }
+    ctx.restore();
+
+    // Titulo + artista, abaixo da capa - alinhados a esquerda, mesma
+    // margem do card.
+    let y = cardY + cardSize + 96;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#f8f2e2';
+    ctx.font = '700 58px Georgia, serif';
+    wrapCanvasText(ctx, track.name, W - pad * 2, 2).forEach((line) => {
+      ctx.fillText(line, pad, y);
+      y += 66;
+    });
+
+    y += 14;
+    ctx.fillStyle = 'rgba(248,242,226,0.75)';
+    ctx.font = '500 38px sans-serif';
+    ctx.fillText(truncateCanvasText(ctx, (track.artists || []).join(', '), W - pad * 2), pad, y);
+
+    // Rodape: logo Vitrola (esquerda) + barrinhas de "tocando" (direita).
+    const footerY = H - 84;
+    const dotR = 17;
+    const dotCx = pad + dotR;
+    const dotCy = footerY - 14;
+    ctx.strokeStyle = '#e9d34a';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(dotCx, dotCy, dotR, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#e9d34a';
+    ctx.beginPath();
+    ctx.arc(dotCx, dotCy, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#f8f2e2';
+    ctx.font = '700 40px Georgia, serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('Vitrola', dotCx + dotR + 18, footerY);
+
+    const eqWidth = 4 * 18 - 8;
+    drawEqualizerBars(ctx, W - pad - eqWidth, footerY - 44, 44, 'rgba(248,242,226,0.9)');
+  }
+
+  function trackShareCanvasToBlob() {
+    return new Promise((resolve) => trackShareCanvasEl.toBlob(resolve, 'image/png'));
+  }
+
+  async function openTrackShareModal() {
+    if (!currentPlayingTrack) {
+      showToast('Nada tocando agora.');
+      return;
+    }
+    trackShareModalEl.classList.remove('hidden');
+    await drawTrackShareCard(currentPlayingTrack);
+  }
+  function closeTrackShareModal() {
+    trackShareModalEl.classList.add('hidden');
+  }
+
+  async function downloadTrackShareCard() {
+    const blob = await trackShareCanvasToBlob();
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vitrola-${(currentPlayingTrack?.name || 'musica').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function shareTrackCard() {
+    const blob = await trackShareCanvasToBlob();
+    if (!blob) return;
+    const file = new File([blob], 'vitrola-musica.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: currentPlayingTrack ? `Tocando agora: ${currentPlayingTrack.name}` : 'Vitrola',
+        });
+        return;
+      } catch {
+        // usuario cancelou o compartilhamento, ou o navegador recusou - cai
+        // pro download normal em vez de nao fazer nada.
+      }
+    }
+    await downloadTrackShareCard();
+  }
+
+  document.querySelectorAll('.js-share-track').forEach((btn) => {
+    btn.addEventListener('click', openTrackShareModal);
+  });
+  document.getElementById('track-share-close-btn').addEventListener('click', closeTrackShareModal);
+  document.getElementById('track-share-confirm-btn').addEventListener('click', shareTrackCard);
+  document.getElementById('track-share-download-btn').addEventListener('click', downloadTrackShareCard);
+  trackShareModalEl.addEventListener('click', (e) => {
+    if (e.target === trackShareModalEl) closeTrackShareModal();
+  });
+
   // ---------- Inicialização ----------
   renderGenres();
   updateQuickAccessVisibility();

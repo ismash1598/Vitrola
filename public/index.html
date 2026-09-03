@@ -542,6 +542,9 @@
       <button id="player-like-btn" class="dpb-round dpb-round--sm" type="button" title="Adicionar à playlist">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.6-7-9.4A4.1 4.1 0 0112 8a4.1 4.1 0 017 2.6C19 15.4 12 20 12 20z"/></svg>
       </button>
+      <button class="js-share-track dpb-round dpb-round--sm" type="button" title="Compartilhar música">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="M8 8l4-4 4 4"/><path d="M5 14v4a2 2 0 002 2h10a2 2 0 002-2v-4"/></svg>
+      </button>
     </div>
 
     <div class="dpb-center">
@@ -589,6 +592,9 @@
     <div id="np-fullscreen-bg" class="np-fullscreen-bg js-art-bg"></div>
     <button id="np-fullscreen-exit-btn" class="np-fullscreen-exit" type="button" title="Voltar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <button class="js-share-track np-fullscreen-share" type="button" title="Compartilhar música">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="M8 8l4-4 4 4"/><path d="M5 14v4a2 2 0 002 2h10a2 2 0 002-2v-4"/></svg>
     </button>
     <div class="np-fullscreen-content">
       <div class="np-fullscreen-art">
@@ -767,6 +773,23 @@
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M8 11l4 4 4-4"/><path d="M5 19h14"/></svg>
         </button>
         <button id="retro-share-close-btn" class="retro-icon-btn" type="button" title="Fechar">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de compartilhar a musica tocando agora: card vertical estilo
+       story (fundo amarelo/laranja, capa, titulo, marca) desenhado em canvas. -->
+  <div id="track-share-modal" class="modal hidden">
+    <div class="modal-content retro-share-modal-content">
+      <canvas id="track-share-canvas" class="retro-capsule-canvas" width="1080" height="1920"></canvas>
+      <div class="retro-share-modal-actions">
+        <button id="track-share-confirm-btn" class="discord-btn" type="button">Compartilhar</button>
+        <button id="track-share-download-btn" class="retro-icon-btn" type="button" title="Baixar imagem">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M8 11l4 4 4-4"/><path d="M5 19h14"/></svg>
+        </button>
+        <button id="track-share-close-btn" class="retro-icon-btn" type="button" title="Fechar">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
