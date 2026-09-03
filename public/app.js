@@ -1965,12 +1965,46 @@
     return `${truncated}…`;
   }
 
+  // Carrega uma imagem liberando CORS (confirmado que i.scdn.co e
+  // i.ytimg.com mandam Access-Control-Allow-Origin: * - sem isso o canvas
+  // ficaria "contaminado" e o toBlob() na hora de exportar quebraria).
+  function loadImageForCanvas(url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+
+  // Desenha "cover" (recorte central, sem distorcer) de uma imagem dentro
+  // de um retangulo x,y,w,h - equivalente ao object-fit:cover do CSS, que
+  // o canvas nao tem de forma nativa.
+  function drawImageCover(ctx, img, x, y, w, h) {
+    const imgRatio = img.width / img.height;
+    const boxRatio = w / h;
+    let sx, sy, sw, sh;
+    if (imgRatio > boxRatio) {
+      sh = img.height;
+      sw = sh * boxRatio;
+      sx = (img.width - sw) / 2;
+      sy = 0;
+    } else {
+      sw = img.width;
+      sh = sw / boxRatio;
+      sx = 0;
+      sy = (img.height - sh) / 2;
+    }
+    ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+  }
+
   // Desenha o card final (formato "story", 9:16) inteiramente no canvas -
-  // sem lib nenhuma, e sem desenhar capa de album de verdade (evitaria o
-  // risco de "tainted canvas" se a imagem de terceiro nao mandar CORS
-  // liberado, o que quebraria o toBlob() na hora de exportar) - o "hero"
-  // usa o mesmo gradiente placeholder do artista #1 que a lista já mostra.
-  function drawRetroCapsule(data, scope) {
+  // sem lib nenhuma. O "hero" tenta usar a capa da musica mais ouvida de
+  // verdade; se a imagem falhar ao carregar (rede, ou algum CDN sem CORS
+  // liberado), fica so o gradiente placeholder que ja foi pintado por
+  // baixo - nunca quebra a exportacao por causa disso.
+  async function drawRetroCapsule(data, scope) {
     const ctx = retroCanvasEl.getContext('2d');
     const W = retroCanvasEl.width;
     const H = retroCanvasEl.height;
@@ -1987,6 +2021,16 @@
 
     ctx.fillStyle = '#0e0d0b';
     ctx.fillRect(0, heroH, W, H - heroH);
+
+    const heroArt = data.topTracks[0]?.albumArt;
+    if (heroArt) {
+      try {
+        const img = await loadImageForCanvas(heroArt);
+        drawImageCover(ctx, img, 0, 0, W, heroH);
+      } catch {
+        // capa nao carregou - fica so o gradiente ja pintado acima
+      }
+    }
 
     const fade = ctx.createLinearGradient(0, heroH - 90, 0, heroH);
     fade.addColorStop(0, 'rgba(14,13,11,0)');
@@ -2073,13 +2117,13 @@
     return new Promise((resolve) => retroCanvasEl.toBlob(resolve, 'image/png'));
   }
 
-  function openRetroShareModal() {
+  async function openRetroShareModal() {
     if (!retroCurrentData || !retroCurrentData.totalPlays) {
       showToast('Nada pra compartilhar ainda esse mês.');
       return;
     }
-    drawRetroCapsule(retroCurrentData, retroScope);
     retroShareModalEl.classList.remove('hidden');
+    await drawRetroCapsule(retroCurrentData, retroScope);
   }
   function closeRetroShareModal() {
     retroShareModalEl.classList.add('hidden');
@@ -2116,10 +2160,10 @@
 
   document.getElementById('retro-share-btn').addEventListener('click', openRetroShareModal);
   document.getElementById('retro-share-close-btn').addEventListener('click', closeRetroShareModal);
-  document.getElementById('retro-download-btn').addEventListener('click', () => {
+  document.getElementById('retro-download-btn').addEventListener('click', async () => {
     if (!retroCurrentData || !retroCurrentData.totalPlays) return;
-    drawRetroCapsule(retroCurrentData, retroScope);
-    downloadRetroCapsule();
+    await drawRetroCapsule(retroCurrentData, retroScope);
+    await downloadRetroCapsule();
   });
   document.getElementById('retro-share-confirm-btn').addEventListener('click', shareRetroCapsule);
   document.getElementById('retro-share-download-btn').addEventListener('click', downloadRetroCapsule);
