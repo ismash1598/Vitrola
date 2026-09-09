@@ -99,6 +99,100 @@
     </div>
   </div>
 
+  <!-- Escolha de modo, logo apos o login: ouvir no site (player
+       independente, sem Discord) ou no Discord (canal de voz de um servidor). -->
+  <div id="mode-chooser" class="mode-chooser hidden">
+    <div class="mode-chooser-inner">
+      <div class="mode-chooser-brand">
+        <span class="retro-hero-logo-dot"></span>
+        <span class="mode-chooser-brand-title">Vitrola</span>
+      </div>
+      <h1 class="mode-chooser-title">Como você quer ouvir?</h1>
+      <div class="mode-chooser-options">
+        <button id="mode-choose-browser" class="mode-chooser-card" type="button">
+          <span class="mode-chooser-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14v-2a9 9 0 0118 0v2"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/></svg>
+          </span>
+          <span class="mode-chooser-card-title">Ouvir no site</span>
+          <span class="mode-chooser-card-sub">Player independente, direto no navegador — sem precisar entrar em canal de voz nenhum.</span>
+        </button>
+        <button id="mode-choose-discord" class="mode-chooser-card" type="button">
+          <span class="mode-chooser-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.5" fill="currentColor" stroke="none"/><path d="M7 5.5C9 4.7 10.5 4.5 12 4.5s3 .2 5 1M6 6.5C3.5 8 3 11 3.3 15c1.6 1.3 3.3 2 5 2.4l.9-1.5M18 6.5c2.5 1.5 3 4.5 2.7 8.5-1.6 1.3-3.3 2-5 2.4l-.9-1.5"/></svg>
+          </span>
+          <span class="mode-chooser-card-title">Ouvir no Discord</span>
+          <span class="mode-chooser-card-sub">Controla o bot tocando no canal de voz de um dos seus servidores.</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Escolha de servidor - so aparece depois de escolher "Ouvir no Discord". -->
+  <div id="guild-picker-screen" class="mode-chooser hidden">
+    <div class="mode-chooser-inner">
+      <button id="guild-picker-back-btn" class="mode-chooser-back" type="button">← Voltar</button>
+      <h1 class="mode-chooser-title">Qual servidor?</h1>
+      <div id="guild-picker-list" class="guild-picker-list"></div>
+    </div>
+  </div>
+
+  <!-- Player independente do navegador: propria busca, fila e barra de
+       reproducao - nao toca em nada do lado do Discord. -->
+  <div id="browser-player-shell" class="browser-shell hidden">
+    <header class="browser-shell-header">
+      <span class="retro-hero-logo-dot"></span>
+      <span class="mode-chooser-brand-title">Vitrola</span>
+      <div class="spacer"></div>
+      <button id="browser-mode-back-btn" class="link-btn" type="button">Trocar modo</button>
+    </header>
+
+    <div class="browser-shell-body">
+      <form id="browser-search-form" class="app-search-form browser-search-form">
+        <span class="app-search-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+        </span>
+        <input id="browser-search-input" class="app-search-input" type="text" placeholder="Buscar música ou artista..." autocomplete="off" />
+      </form>
+      <ul id="browser-search-results" class="track-list"></ul>
+
+      <div id="browser-queue-section" class="browser-queue-section hidden">
+        <h3 class="retro-section-title">Fila</h3>
+        <div id="browser-queue-list" class="browser-queue-list"></div>
+      </div>
+    </div>
+
+    <div id="browser-player-bar" class="browser-player-bar hidden">
+      <div class="dpb-art"><img id="browser-player-art" alt="" /></div>
+      <div class="dpb-text">
+        <div id="browser-player-name" class="dpb-name">Nada tocando</div>
+        <div id="browser-player-artist" class="dpb-artist"></div>
+      </div>
+      <div class="browser-player-center">
+        <div class="browser-player-controls">
+          <button id="browser-prev-btn" class="dpb-round dpb-round--sm" type="button" title="Anterior">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5v14L7 12z" fill="currentColor"/><path d="M5 5v14"/></svg>
+          </button>
+          <button id="browser-playpause-btn" class="dpb-play" type="button" title="Play/Pause">
+            <svg class="icon icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <svg class="icon icon-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" style="display:none"><path d="M9 5v14M15 5v14"/></svg>
+          </button>
+          <button id="browser-next-btn" class="dpb-round dpb-round--bright" type="button" title="Próxima">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14l11-7z" fill="currentColor"/><path d="M19 5v14"/></svg>
+          </button>
+        </div>
+        <div class="dpb-progress-row">
+          <span id="browser-player-elapsed" class="dpb-time">0:00</span>
+          <input id="browser-player-progress" class="dpb-progress" type="range" min="0" max="100" value="0" step="0.1" />
+          <span id="browser-player-duration" class="dpb-time">0:00</span>
+        </div>
+      </div>
+      <div class="dpb-volume">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h3l4 4V6L7 10z" fill="currentColor"/><path d="M16 9.5a4 4 0 010 5M18.5 7a7.5 7.5 0 010 10"/></svg>
+        <input id="browser-player-volume" class="dpb-volume-range" type="range" min="0" max="1" value="1" step="0.01" />
+      </div>
+    </div>
+  </div>
+
   <!-- Estrutura abaixo copiada diretamente de "template html/inicio.html"
        (extraida via outerHTML do DOM ja renderizado, em duas larguras -
        mobile e desktop, que sao DOMs diferentes no template). Os valores de
@@ -892,6 +986,9 @@
   <!-- Audio do modo "ouvir pelo navegador" (ver toggle nas Configuracoes).
        Sem controls: e controlado por JS, nao pelo player nativo do navegador. -->
   <audio id="browser-listen-audio" preload="none"></audio>
+
+  <!-- Audio do player INDEPENDENTE (secao "Ouvir no site", sem Discord). -->
+  <audio id="browser-player-audio" preload="none"></audio>
 
   <script src="app.js"></script>
 </body>

@@ -14,6 +14,7 @@ const bot = require('../discord/bot');
 const playlists = require('../db/playlists');
 const history = require('../discord/history');
 const listeningLog = require('../discord/listeningLog');
+const browserPlayer = require('../discord/browserPlayer');
 const session = require('../discord/session');
 const { requireAuth } = require('./authMiddleware');
 const { badRequest, forbidden, notFound } = require('../httpError');
@@ -150,7 +151,24 @@ router.get(
   })
 );
 
+// ---- Modo "so no navegador" (player independente, sem guild/canal de voz) ----
+// Mesmo motivo do /listen acima pro GET usar ticket em vez de header: essa
+// URL vira o "src" de uma tag <audio>.
+router.get(
+  '/browser-play',
+  asyncRoute(async (req, res, next) => {
+    const entry = session.consumeTrackTicket(req.query.ticket);
+    if (!entry) return next(forbidden('Ticket invalido ou expirado - peca um novo em /browser-play/ticket'));
+    await browserPlayer.streamTrackToResponse(entry.track, res);
+  })
+);
+
 router.use(requireAuth);
+
+router.post('/browser-play/ticket', (req, res) => {
+  const track = sanitizeTrack(req.body.track);
+  res.json({ ticket: session.createTrackTicket(req.user, track) });
+});
 
 // ---- Status ----
 // fullQueue=1 so quando o cliente realmente precisa da fila inteira (aba

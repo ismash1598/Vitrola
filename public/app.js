@@ -226,13 +226,6 @@
     accountLoggedOutEl.classList.toggle('hidden', !!currentUser);
     accountLoggedInEl.classList.toggle('hidden', !currentUser);
 
-    // #landing-page nao e position:fixed - so cobre o primeiro "vh" da
-    // pagina. No celular (sem o overflow:hidden de tela unica do PC) a
-    // .bottom-bar (fixed) ficava aparecendo por cima da tela de login, dando
-    // acesso a busca/generos/etc antes mesmo de entrar com Discord.
-    document.querySelector('.app-shell').classList.toggle('hidden', !currentUser);
-    document.querySelector('.bottom-bar').classList.toggle('hidden', !currentUser);
-
     document.querySelectorAll('.js-topbar-user-chip').forEach((el) => el.classList.toggle('hidden', !currentUser));
     if (currentUser) {
       document.querySelectorAll('.js-topbar-user-avatar').forEach((el) => (el.src = currentUser.avatar || ''));
@@ -245,6 +238,7 @@
 
       try {
         const guilds = await api('/guilds');
+        mutualGuilds = guilds;
         guildSelectEl.innerHTML = '';
         guilds.forEach((g) => {
           const opt = document.createElement('option');
@@ -262,8 +256,256 @@
       }
     } else {
       guildSelectEl.innerHTML = '';
+      mutualGuilds = [];
+    }
+
+    // #landing-page nao e position:fixed - so cobre o primeiro "vh" da
+    // pagina. No celular (sem o overflow:hidden de tela unica do PC) a
+    // .bottom-bar (fixed) ficava aparecendo por cima da tela de login, dando
+    // acesso a busca/generos/etc antes mesmo de entrar com Discord. Depois
+    // do login tem uma tela de escolha (site x Discord) antes de mostrar
+    // qualquer uma das duas telas de verdade - ver applyModeScreen().
+    applyModeScreen();
+  }
+
+  // ---------- Escolha de modo (site x Discord) ----------
+  // Depois do login, a pessoa escolhe entre um player INDEPENDENTE (so no
+  // navegador, sem precisar de canal de voz nenhum) ou controlar o bot no
+  // Discord (com a tela normal do app, que ja existia). appMode fica so em
+  // memoria (nao persiste) - cada vez que a pagina recarrega, escolhe de
+  // novo; "Trocar modo" nos dois lugares volta pra essa tela sem precisar
+  // deslogar.
+  let appMode = null; // 'discord' | 'browser' | null
+  let mutualGuilds = [];
+
+  function hideAllModeScreens() {
+    document.getElementById('mode-chooser').classList.add('hidden');
+    document.getElementById('guild-picker-screen').classList.add('hidden');
+    document.getElementById('browser-player-shell').classList.add('hidden');
+    document.querySelector('.app-shell').classList.add('hidden');
+    document.querySelector('.bottom-bar').classList.add('hidden');
+  }
+
+  function showModeChooser() {
+    appMode = null;
+    hideAllModeScreens();
+    document.getElementById('mode-chooser').classList.remove('hidden');
+  }
+
+  function renderGuildPicker() {
+    const listEl = document.getElementById('guild-picker-list');
+    listEl.innerHTML = '';
+    if (!mutualGuilds.length) {
+      listEl.innerHTML = '<div class="guild-picker-empty">Você ainda não está em nenhum servidor com o bot. Convide o Vitrola pro seu servidor do Discord primeiro.</div>';
+      return;
+    }
+    mutualGuilds.forEach((g) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'guild-picker-item';
+      btn.innerHTML = `
+        <img class="guild-picker-item-art" src="${escapeAttr(g.icon || '')}" alt="" />
+        <span class="guild-picker-item-name">${escapeHtml(g.name)}</span>
+      `;
+      btn.addEventListener('click', () => chooseGuild(g.id));
+      listEl.appendChild(btn);
+    });
+  }
+
+  function enterDiscordMode() {
+    appMode = 'discord';
+    hideAllModeScreens();
+    renderGuildPicker();
+    document.getElementById('guild-picker-screen').classList.remove('hidden');
+  }
+
+  function chooseGuild(guildId) {
+    settings.currentGuildId = guildId;
+    guildSelectEl.value = guildId;
+    hideAllModeScreens();
+    document.querySelector('.app-shell').classList.remove('hidden');
+    document.querySelector('.bottom-bar').classList.remove('hidden');
+  }
+
+  function enterBrowserMode() {
+    appMode = 'browser';
+    hideAllModeScreens();
+    document.getElementById('browser-player-shell').classList.remove('hidden');
+  }
+
+  // Chamado sempre que o login/logout muda (refreshAccountUI). Sem
+  // usuario, esconde tudo (a tela de login, fora dessas, ja cuida disso).
+  // Com usuario: mantem a tela atual se ja tinha escolhido um modo nessa
+  // sessao (ex: guildas recarregaram em segundo plano), senao mostra a
+  // escolha de modo.
+  function applyModeScreen() {
+    if (!currentUser) {
+      hideAllModeScreens();
+      return;
+    }
+    if (appMode === 'discord' && settings.currentGuildId) {
+      hideAllModeScreens();
+      document.querySelector('.app-shell').classList.remove('hidden');
+      document.querySelector('.bottom-bar').classList.remove('hidden');
+    } else if (appMode === 'browser') {
+      hideAllModeScreens();
+      document.getElementById('browser-player-shell').classList.remove('hidden');
+    } else {
+      showModeChooser();
     }
   }
+
+  document.getElementById('mode-choose-browser').addEventListener('click', enterBrowserMode);
+  document.getElementById('mode-choose-discord').addEventListener('click', enterDiscordMode);
+  document.getElementById('guild-picker-back-btn').addEventListener('click', showModeChooser);
+  document.getElementById('browser-mode-back-btn').addEventListener('click', showModeChooser);
+
+  // ---------- Player independente do navegador (sem Discord) ----------
+  // Fila e reproducao vivem 100% no navegador (nem localStorage por
+  // enquanto - some ao fechar a aba); o backend so resolve+streama uma
+  // faixa avulsa por vez (ver /api/browser-play), sem nocao de guild nem
+  // canal de voz.
+  let browserQueue = [];
+  let browserQueueIndex = -1;
+  const browserPlayerAudioEl = document.getElementById('browser-player-audio');
+
+  async function searchForBrowser(q) {
+    const resultsEl = document.getElementById('browser-search-results');
+    resultsEl.innerHTML = '<li>Buscando...</li>';
+    try {
+      const tracks = await api(`/search?q=${encodeURIComponent(q)}`);
+      resultsEl.innerHTML = '';
+      if (!tracks.length) {
+        resultsEl.innerHTML = '<li>Nenhum resultado encontrado.</li>';
+        return;
+      }
+      tracks.forEach((track) => {
+        resultsEl.appendChild(
+          trackRow(track, {
+            onPlayNow: (t) => browserEnqueue(t, true),
+            onAddQueue: (t) => browserEnqueue(t, false),
+            onAddPlaylist: (t) => openAddToPlaylistModal(t),
+          })
+        );
+      });
+    } catch (err) {
+      resultsEl.innerHTML = `<li>Erro: ${escapeHtml(err.message)}</li>`;
+    }
+  }
+
+  document.getElementById('browser-search-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const q = document.getElementById('browser-search-input').value.trim();
+    if (!q) return;
+    searchForBrowser(q);
+  });
+
+  function renderBrowserQueue() {
+    const section = document.getElementById('browser-queue-section');
+    const listEl = document.getElementById('browser-queue-list');
+    const upcoming = browserQueue.slice(browserQueueIndex + 1);
+    section.classList.toggle('hidden', upcoming.length === 0);
+    listEl.innerHTML = '';
+    upcoming.forEach((track, i) => {
+      const realIndex = browserQueueIndex + 1 + i;
+      listEl.appendChild(
+        buildQueueRow(track, i, {
+          onPlayNow: () => playBrowserTrack(realIndex),
+          onRemove: () => {
+            browserQueue.splice(realIndex, 1);
+            renderBrowserQueue();
+          },
+        })
+      );
+    });
+  }
+
+  function setBrowserPlayPauseIcon(paused) {
+    const btn = document.getElementById('browser-playpause-btn');
+    btn.querySelector('.icon-play').style.display = paused ? '' : 'none';
+    btn.querySelector('.icon-pause').style.display = paused ? 'none' : '';
+  }
+
+  function updateBrowserNowPlayingUI(track) {
+    document.getElementById('browser-player-bar').classList.remove('hidden');
+    document.getElementById('browser-player-name').textContent = track.name;
+    document.getElementById('browser-player-artist').textContent = (track.artists || []).join(', ');
+    const artEl = document.getElementById('browser-player-art');
+    if (track.albumArt) {
+      artEl.src = track.albumArt;
+      artEl.style.display = '';
+    } else {
+      artEl.removeAttribute('src');
+      artEl.style.display = 'none';
+    }
+  }
+
+  async function playBrowserTrack(index) {
+    if (index < 0 || index >= browserQueue.length) return;
+    browserQueueIndex = index;
+    const track = browserQueue[index];
+    renderBrowserQueue();
+    updateBrowserNowPlayingUI(track);
+    try {
+      const { ticket } = await api('/browser-play/ticket', { method: 'POST', body: JSON.stringify({ track }) });
+      browserPlayerAudioEl.src = `${settings.apiUrl}/api/browser-play?ticket=${encodeURIComponent(ticket)}`;
+      await browserPlayerAudioEl.play();
+    } catch (err) {
+      console.error('Erro ao tocar:', err.message);
+      showToast(`Erro ao tocar: ${err.message}`);
+    }
+  }
+
+  function browserEnqueue(track, playNow) {
+    if (playNow) {
+      browserQueue.splice(browserQueueIndex + 1, 0, track);
+      playBrowserTrack(browserQueueIndex + 1);
+    } else {
+      browserQueue.push(track);
+      if (browserQueueIndex === -1) {
+        playBrowserTrack(0);
+      } else {
+        renderBrowserQueue();
+      }
+      showToast(`Adicionado à fila: ${track.name}`);
+    }
+  }
+
+  function browserPlayNext() {
+    if (browserQueueIndex + 1 < browserQueue.length) playBrowserTrack(browserQueueIndex + 1);
+  }
+  function browserPlayPrev() {
+    if (browserQueueIndex > 0) playBrowserTrack(browserQueueIndex - 1);
+  }
+
+  document.getElementById('browser-next-btn').addEventListener('click', browserPlayNext);
+  document.getElementById('browser-prev-btn').addEventListener('click', browserPlayPrev);
+  document.getElementById('browser-playpause-btn').addEventListener('click', () => {
+    if (!browserPlayerAudioEl.src) return;
+    if (browserPlayerAudioEl.paused) browserPlayerAudioEl.play();
+    else browserPlayerAudioEl.pause();
+  });
+
+  browserPlayerAudioEl.addEventListener('play', () => setBrowserPlayPauseIcon(false));
+  browserPlayerAudioEl.addEventListener('pause', () => setBrowserPlayPauseIcon(true));
+  browserPlayerAudioEl.addEventListener('ended', browserPlayNext);
+  browserPlayerAudioEl.addEventListener('timeupdate', () => {
+    const duration = browserPlayerAudioEl.duration;
+    const current = browserPlayerAudioEl.currentTime;
+    document.getElementById('browser-player-elapsed').textContent = formatTime(current);
+    const progressEl = document.getElementById('browser-player-progress');
+    if (isFinite(duration) && duration > 0) {
+      document.getElementById('browser-player-duration').textContent = formatTime(duration);
+      progressEl.max = duration;
+      if (!progressEl.matches(':active')) progressEl.value = current;
+    }
+  });
+  document.getElementById('browser-player-progress').addEventListener('input', (e) => {
+    browserPlayerAudioEl.currentTime = Number(e.target.value);
+  });
+  document.getElementById('browser-player-volume').addEventListener('input', (e) => {
+    browserPlayerAudioEl.volume = Number(e.target.value);
+  });
 
   // ---------- Configurações ----------
   const settingsModal = document.getElementById('settings-modal');

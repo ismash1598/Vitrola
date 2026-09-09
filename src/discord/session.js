@@ -89,6 +89,27 @@ function consumeStreamTicket(ticket) {
   return entry.user;
 }
 
+// Igual ao streamTicket acima, mas pro modo "so no navegador" (/api/browser-play):
+// como nao ha guildId nem faixa "atual" de um player pra apontar, o ticket
+// carrega a PROPRIA faixa que o navegador quer tocar (ja sanitizada antes
+// de chegar aqui - ver routes.js).
+const trackTickets = new Map();
+const TRACK_TICKET_TTL_MS = 60 * 1000;
+
+function createTrackTicket(user, track) {
+  const ticket = crypto.randomBytes(16).toString('hex');
+  trackTickets.set(ticket, { user, track, expiresAt: Date.now() + TRACK_TICKET_TTL_MS });
+  return ticket;
+}
+
+function consumeTrackTicket(ticket) {
+  const entry = trackTickets.get(ticket);
+  if (!entry) return null;
+  trackTickets.delete(ticket);
+  if (entry.expiresAt < Date.now()) return null;
+  return entry;
+}
+
 module.exports = {
   createSession,
   getSession,
@@ -96,4 +117,6 @@ module.exports = {
   updateUserGuilds,
   createStreamTicket,
   consumeStreamTicket,
+  createTrackTicket,
+  consumeTrackTicket,
 };

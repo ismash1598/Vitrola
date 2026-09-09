@@ -752,4 +752,4 @@ function hasPlayer(guildId) {
   return players.has(guildId);
 }
 
-module.exports = { getPlayer, hasPlayer, playerEvents };
+module.exports = { getPlayer, hasPlayer, playerEvents, ffmpegPath };
