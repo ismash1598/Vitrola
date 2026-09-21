@@ -20,6 +20,12 @@
       <div class="landing2-brand">
         <div class="landing2-brand-mark"><span class="landing2-brand-mark-dot"></span></div>
         <div class="landing2-brand-title">Vitrola</div>
+        <div class="spacer"></div>
+        <button id="settings-btn-landing" class="header-icon-btn" type="button" title="Configurações">
+          <span class="header-icon-btn-glyph">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          </span>
+        </button>
       </div>
 
       <div class="landing2-intro">
@@ -898,6 +904,18 @@
         <button id="settings-close-x-btn" class="settings-close-x" type="button" title="Fechar" aria-label="Fechar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
+      </div>
+
+      <div class="settings-block">
+        <div class="settings-block-label">Conexão</div>
+        <div class="settings-card">
+          <div class="settings-field">
+            <label class="settings-field-label" for="api-url-input">URL do backend</label>
+            <input id="api-url-input" class="settings-select" type="text" placeholder="https://exemplo.trycloudflare.com" autocomplete="off" autocapitalize="off" spellcheck="false" />
+            <div class="settings-row-sub">Muda toda vez que o túnel reinicia — cole a URL nova aqui e clique em Salvar, sem precisar reinstalar o app.</div>
+          </div>
+          <button id="api-url-save-btn" class="settings-pill-btn" type="button">Salvar</button>
+        </div>
       </div>
 
       <div class="settings-block">

@@ -509,18 +509,49 @@
 
   // ---------- Configurações ----------
   const settingsModal = document.getElementById('settings-modal');
+  const apiUrlInputEl = document.getElementById('api-url-input');
   function openSettingsModal() {
+    apiUrlInputEl.value = settings.apiUrl;
     refreshAccountUI();
     settingsModal.classList.remove('hidden');
   }
+  // #settings-btn-landing existe na tela de login, ANTES de qualquer
+  // autenticacao - e assim que da pra corrigir uma URL de backend errada
+  // (ex: apontando pro tunel antigo) sem precisar reinstalar o app.
   document.getElementById('settings-btn').addEventListener('click', openSettingsModal);
   document.getElementById('settings-btn-desktop').addEventListener('click', openSettingsModal);
+  document.getElementById('settings-btn-landing').addEventListener('click', openSettingsModal);
   function closeSettingsModal() {
     settingsModal.classList.add('hidden');
   }
   document.getElementById('settings-close-btn').addEventListener('click', closeSettingsModal);
   document.getElementById('settings-close-x-btn').addEventListener('click', closeSettingsModal);
   document.getElementById('settings-save-btn').addEventListener('click', closeSettingsModal);
+
+  // URL do backend: separado do resto das configuracoes porque precisa
+  // funcionar mesmo sem sessao nenhuma (o app so consegue logar/buscar
+  // depois de apontar pra URL certa) - guardado no proprio aparelho
+  // (localStorage), nao no codigo do app. Pensado pro modo APK: o tunel do
+  // Cloudflare muda de endereco toda vez que reinicia, e sem esse campo
+  // cada troca exigiria gerar um novo .apk.
+  document.getElementById('api-url-save-btn').addEventListener('click', () => {
+    const value = apiUrlInputEl.value.trim().replace(/\/+$/, '');
+    if (!value) {
+      showToast('Cole a URL do backend antes de salvar.');
+      return;
+    }
+    try {
+      const parsed = new URL(value);
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') throw new Error('protocolo invalido');
+    } catch {
+      showToast('URL inválida - use algo como https://exemplo.trycloudflare.com');
+      return;
+    }
+    settings.apiUrl = value;
+    apiUrlInputEl.value = value;
+    showToast('URL do backend salva!');
+    refreshAccountUI();
+  });
 
   // ---------- Helpers de renderização de faixa ----------
   function trackRow(track, { onPlayNow, onAddQueue, onAddPlaylist, onRemove } = {}) {
