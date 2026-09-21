@@ -138,6 +138,62 @@ async function getMixQueue(videoId, limit = 10) {
     }));
 }
 
+// Busca musicas usando a busca do proprio YouTube Music (music.youtube.com),
+// nao a busca geral do YouTube - e a diferenca entre pedir "musica" e pedir
+// "video": a mesma consulta la devolve so faixas/versoes de estudio em vez
+// de tutoriais, covers, lyric videos aleatorios etc. Serve de alternativa
+// (e fallback automatico, ver routes.js) a busca do Spotify, que passou a
+// exigir assinatura Premium na conta dona do app so pra usar o endpoint de
+// busca (client credentials, sem login de usuario nenhum).
+//
+// Extracao "flat" (sem abrir cada video) devolve so id/titulo - nao tem
+// duracao nem canal, diferente de uma busca no youtube.com "normal". E uma
+// troca consciente: resolver cada resultado individualmente custaria um
+// processo yt-dlp inteiro por faixa exibida na lista (o mesmo custo de CPU
+// que o projeto todo tenta evitar - ver resolveTrackAudio), so pra mostrar
+// duracao. A duracao real aparece assim que a faixa e tocada de verdade.
+async function searchMusic(query, limit = 10) {
+  const url = `https://music.youtube.com/search?q=${encodeURIComponent(query)}`;
+  const result = await ytdlp.exec(url, {
+    flatPlaylist: true,
+    dumpJson: true,
+    noWarnings: true,
+    playlistEnd: limit,
+  });
+
+  const lines = result.stdout.trim().split('\n').filter(Boolean);
+  return lines
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return null;
+      }
+    })
+    // A busca do YouTube Music mistura resultados de faixa (ie_key
+    // "Youtube") com resultados de artista/canal (ie_key "YoutubeTab",
+    // paginas /browse/ sem audio nenhum) - so as faixas interessam aqui.
+    .filter((entry) => entry && entry.id && entry.ie_key === 'Youtube')
+    .slice(0, limit)
+    .map((entry) => {
+      const { name, artists } = parseYoutubeTitle(entry.title || '');
+      return {
+        id: `yt:${entry.id}`,
+        name: name || entry.title,
+        artists,
+        album: null,
+        albumArt: `https://i.ytimg.com/vi/${entry.id}/hqdefault.jpg`,
+        durationMs: null,
+        spotifyUrl: null,
+        _youtube: {
+          videoUrl: `https://www.youtube.com/watch?v=${entry.id}`,
+          title: entry.title || name,
+          durationSec: null,
+        },
+      };
+    });
+}
+
 // Aceita link do YouTube ou do YouTube Music (mesma URL base, mesmo
 // parametro "list="), URI curta, ou o ID puro da playlist.
 function extractYoutubePlaylistId(input) {
@@ -210,4 +266,5 @@ module.exports = {
   parseYoutubeTitle,
   extractYoutubePlaylistId,
   getYoutubePlaylist,
+  searchMusic,
 };

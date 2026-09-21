@@ -116,12 +116,15 @@ router.get('/public-stats', (req, res) => {
 });
 
 // ---- Busca (publica, nao precisa de login) ----
+// So YouTube Music: a busca do Spotify (client credentials) passou a exigir
+// assinatura Premium na conta dona do app so pra buscar, mesmo sem login de
+// usuario nenhum envolvido - inviavel de depender dela aqui.
 router.get(
   '/search',
   asyncRoute(async (req, res) => {
     const q = req.query.q;
     if (!q) return res.status(400).json({ error: 'parametro q e obrigatorio' });
-    const tracks = await spotify.searchTracks(q);
+    const tracks = await youtube.searchMusic(q);
     res.json(tracks);
   })
 );

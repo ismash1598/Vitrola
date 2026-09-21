@@ -49,29 +49,6 @@ function mapTrack(item) {
   };
 }
 
-// Apps do Spotify em modo de desenvolvimento (sem Extended Quota Mode aprovado)
-// tem o parametro limit do endpoint de busca restrito a no maximo 10.
-async function searchTracks(query, limit = 10) {
-  const token = await getAccessToken();
-
-  const url = new URL('https://api.spotify.com/v1/search');
-  url.searchParams.set('type', 'track');
-  url.searchParams.set('q', query);
-  url.searchParams.set('limit', String(limit));
-
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Falha ao buscar no Spotify: ${response.status} ${text}`);
-  }
-
-  const data = await response.json();
-  return (data.tracks?.items || []).map(mapTrack);
-}
-
 // Aceita link (open.spotify.com/playlist/ID), URI (spotify:playlist:ID) ou o
 // ID puro.
 function extractPlaylistId(input) {
@@ -156,4 +133,4 @@ async function getPlaylist(playlistId) {
   return { name: entity.name, tracks };
 }
 
-module.exports = { searchTracks, extractPlaylistId, getPlaylist };
+module.exports = { extractPlaylistId, getPlaylist };

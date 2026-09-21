@@ -56,6 +56,14 @@
     toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2200);
   }
 
+  // ---------- Deteccao de app nativo (Capacitor) ----------
+  // window.Capacitor so existe quando a pagina roda dentro do WebView do
+  // APK (injetado pela ponte nativa antes do nosso script carregar). No
+  // site normal (aberto direto pela URL do tunel), essa variavel nao existe
+  // - e ali settings.apiUrl ja cai certo no window.location.origin sozinho,
+  // entao o campo "URL do backend" so faz sentido dentro do app.
+  const isNativeApp = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+
   // ---------- Configuração (localStorage) ----------
   const settings = {
     get apiUrl() {
@@ -515,12 +523,19 @@
     refreshAccountUI();
     settingsModal.classList.remove('hidden');
   }
-  // #settings-btn-landing existe na tela de login, ANTES de qualquer
-  // autenticacao - e assim que da pra corrigir uma URL de backend errada
-  // (ex: apontando pro tunel antigo) sem precisar reinstalar o app.
+  // #settings-btn-landing e o bloco "Conexao" so existem pro app (APK):
+  // e assim que da pra corrigir a URL do backend (tunel do Cloudflare)
+  // sem precisar reinstalar o app. No site normal isso e escondido, porque
+  // settings.apiUrl ja cai certo em window.location.origin sozinho.
+  const settingsBtnLandingEl = document.getElementById('settings-btn-landing');
+  const settingsConnectionBlockEl = document.getElementById('settings-block-connection');
+  if (isNativeApp) {
+    settingsBtnLandingEl.classList.remove('hidden');
+    settingsConnectionBlockEl.classList.remove('hidden');
+  }
   document.getElementById('settings-btn').addEventListener('click', openSettingsModal);
   document.getElementById('settings-btn-desktop').addEventListener('click', openSettingsModal);
-  document.getElementById('settings-btn-landing').addEventListener('click', openSettingsModal);
+  settingsBtnLandingEl.addEventListener('click', openSettingsModal);
   function closeSettingsModal() {
     settingsModal.classList.add('hidden');
   }
