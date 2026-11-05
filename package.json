@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Bot de Discord + interface web de busca/player, com playlists e evolucao futura para APK Android",
   "main": "src/index.js",
+  "license": "MIT",
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",

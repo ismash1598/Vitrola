@@ -161,6 +161,10 @@ cd android && gradlew assembleDebug
 
 Dentro do app, abra as Configurações (⚙) e cole a URL do backend. Ela aparece só no app, não no site.
 
+## Licença
+
+Código sob a [licença MIT](LICENSE). A licença cobre o código deste projeto; ela não dá nenhum direito sobre as músicas, nem sobre o YouTube, o Spotify ou o Discord, que seguem os próprios termos.
+
 ## Uso responsável
 
 Tocar áudio extraído do YouTube em um servidor de Discord pessoal, sem fins comerciais, é prática comum entre bots caseiros, mas não é permitido pelos termos de uso do YouTube. Projetos assim já foram derrubados no passado (o bot Rythm, por exemplo, foi desligado em 2021). Este projeto é **educacional**: use por sua conta e risco, apenas com amigos, e **não o venda nem ofereça como serviço**. Não há afiliação com Discord, YouTube ou Spotify.
