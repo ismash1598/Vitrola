@@ -1,5 +1,6 @@
 // Monta o site de demonstração (GitHub Pages) em dist-demo/:
-// uma cópia de public/ + demo/demo.js, carregado antes do app.js.
+// uma cópia de public/ + demo/demo.js (API simulada) + demo/tour.js (tutorial
+// guiado), carregados antes do app.js.
 // Uso: npm run demo:build   (o workflow .github/workflows/pages.yml faz o mesmo)
 const fs = require('fs');
 const path = require('path');
@@ -10,6 +11,7 @@ function buildDemo({ root = path.join(__dirname, '..'), outDir = path.join(root,
   fs.rmSync(outDir, { recursive: true, force: true });
   fs.cpSync(path.join(root, 'public'), outDir, { recursive: true });
   fs.copyFileSync(path.join(root, 'demo', 'demo.js'), path.join(outDir, 'demo.js'));
+  fs.copyFileSync(path.join(root, 'demo', 'tour.js'), path.join(outDir, 'tour.js'));
 
   const indexPath = path.join(outDir, 'index.html');
   const html = fs.readFileSync(indexPath, 'utf8');
@@ -17,7 +19,7 @@ function buildDemo({ root = path.join(__dirname, '..'), outDir = path.join(root,
     throw new Error(`public/index.html não tem ${MARKER}; o build da demo precisa dele para injetar o demo.js`);
   }
   // função em vez de string: o "$" em replace() teria significado especial
-  fs.writeFileSync(indexPath, html.replace(MARKER, () => `<script src="demo.js"></script>\n  ${MARKER}`));
+  fs.writeFileSync(indexPath, html.replace(MARKER, () => `<script src="demo.js"></script>\n  <script src="tour.js"></script>\n  ${MARKER}`));
 
   // Sem Jekyll: o Pages serve os arquivos exatamente como estão.
   fs.writeFileSync(path.join(outDir, '.nojekyll'), '');

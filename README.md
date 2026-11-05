@@ -8,6 +8,8 @@ Bot de música para Discord **com painel web**: busca, fila com autoplay, playli
 
 **[Abra a demo no navegador](https://ismash1598.github.io/Vitrola/)** — sem login, sem instalar nada. Ela roda inteira no seu navegador: as músicas são **fictícias** e o áudio é gerado na hora, só para você ver a interface funcionando (busca, fila, autoplay, playlists, "Cápsula do tempo"). Nada é enviado ao Discord. A versão de verdade, com o bot tocando no canal de voz, é a que você instala abaixo.
 
+Ao escolher **Ouvir no site** ou **Ouvir no Discord**, um **tutorial passo a passo** destaca cada botão e explica o que fazer (dá para pular, rever pelo link "Tutorial" na faixa lateral ou voltar à tela inicial por "Início"). Toda vez que a demo é aberta numa aba nova, ela começa pela tela inicial do projeto.
+
 | | |
 |---|---|
 | ![Tela inicial](assets/screenshots/landing.png) | ![Fila de reprodução](assets/screenshots/fila.png) |
@@ -128,7 +130,8 @@ src/
 └── db/                      # playlists
 public/                      # front-end estático (também usado pelo app Android)
 demo/demo.js                 # API simulada no navegador, só para o site de demonstração
-scripts/build-demo.js        # monta o site da demo (public/ + demo.js) em dist-demo/
+demo/tour.js                 # tutorial passo a passo da demonstração
+scripts/build-demo.js        # monta o site da demo (public/ + demo.js + tour.js) em dist-demo/
 .github/workflows/pages.yml  # publica a demo no GitHub Pages a cada push na main
 test/                        # testes automatizados
 Iniciar.bat / Configurar.bat # launchers do Windows
@@ -151,7 +154,7 @@ Tudo em `/api`, exceto `/api/search` e `/api/public-stats` (públicas), exige o 
 
 ### Site de demonstração (GitHub Pages)
 
-O front-end é estático, então dá para publicá-lo sem backend. A pasta `demo/` tem um `demo.js` que é carregado **antes** do `app.js` e responde as chamadas `/api/*` dentro do navegador (login simulado, catálogo fictício, player simulado, áudio sintetizado pela Web Audio/WAV). O `public/` não é alterado: o `scripts/build-demo.js` copia tudo para `dist-demo/` e injeta o script.
+O front-end é estático, então dá para publicá-lo sem backend. A pasta `demo/` tem um `demo.js` que é carregado **antes** do `app.js` e responde as chamadas `/api/*` dentro do navegador (login simulado, catálogo fictício, player simulado, áudio sintetizado pela Web Audio/WAV). O `tour.js` é o tutorial guiado: ele só observa a página (qual tela está aberta, quais elementos existem) e destaca o botão certo em cada passo; o `app.js` não sabe que ele existe. O `public/` não é alterado: o `scripts/build-demo.js` copia tudo para `dist-demo/` e injeta os dois scripts.
 
 ```bash
 npm run demo:build   # gera dist-demo/

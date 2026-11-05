@@ -200,7 +200,10 @@ test('build da demo: injeta o demo.js antes do app.js e não mexe em public/', (
     assert.ok(html.indexOf('demo.js') !== -1);
     assert.ok(html.indexOf('demo.js') < html.indexOf('app.js'));
     assert.equal(html.match(/demo\.js/g).length, 1);
-    for (const f of ['app.js', 'style.css', 'demo.js', '.nojekyll']) {
+    assert.ok(html.indexOf('tour.js') !== -1);
+    assert.ok(html.indexOf('tour.js') < html.indexOf('app.js'));
+    assert.equal(html.match(/tour\.js/g).length, 1);
+    for (const f of ['app.js', 'style.css', 'demo.js', 'tour.js', '.nojekyll']) {
       assert.ok(fs.existsSync(path.join(dir, f)), f);
     }
     const original = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');

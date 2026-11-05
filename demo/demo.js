@@ -637,6 +637,24 @@
   const demo = createDemo({ storage: (() => { try { return win.localStorage; } catch { return null; } })() });
   setInterval(demo.tick, 500);
 
+  // A tela inicial (landing) aparece sempre que alguem abre a demo numa aba
+  // nova: a "sessao" falsa so vale enquanto a aba estiver aberta. Sem isso,
+  // quem ja entrou uma vez cairia direto na escolha de modo e nunca mais veria
+  // a pagina de apresentacao. Se o navegador nao deixar usar sessionStorage,
+  // mantem como esta (senao "Entrar" recarregaria para a landing em loop).
+  const STARTED_KEY = 'vitrolaDemoStarted';
+  let started = true;
+  try { started = win.sessionStorage.getItem(STARTED_KEY) === '1'; } catch { started = true; }
+  if (!started) {
+    try { win.localStorage.removeItem('sessionToken'); } catch { /* nada a limpar */ }
+  }
+
+  function goToLanding() {
+    try { win.localStorage.removeItem('sessionToken'); } catch { /* ok */ }
+    try { win.sessionStorage.removeItem(STARTED_KEY); } catch { /* ok */ }
+    win.location.reload();
+  }
+
   // --- fetch: qualquer /api/... e respondido aqui, nada sai da pagina ---
   const realFetch = win.fetch.bind(win);
   win.fetch = async function (input, init) {
@@ -695,6 +713,7 @@
     e.preventDefault();
     e.stopImmediatePropagation();
     try { win.localStorage.setItem('sessionToken', TOKEN); } catch { /* segue mesmo assim */ }
+    try { win.sessionStorage.setItem(STARTED_KEY, '1'); } catch { /* ok */ }
     win.location.reload();
   }
   ['landing-login-btn', 'discord-login-btn'].forEach((id) => {
@@ -726,23 +745,31 @@
     #demo-banner a{color:#9ad1ff;text-decoration:underline}
     #demo-banner button{all:unset;cursor:pointer;opacity:.7;width:14px;height:14px;text-align:center;font-size:14px;line-height:14px}
     #demo-banner button:hover{opacity:1}
+    #demo-banner .nav{all:unset;cursor:pointer;color:#9ad1ff;text-decoration:underline;font:10px/1 system-ui,sans-serif}
+    #demo-banner.collapsed .long,#demo-banner.collapsed .gh{display:none}
+    html[data-demo-screen="landing"] #demo-banner .tour-open{display:none}
     @media (max-width:560px){#demo-banner .long{display:none}}`;
   doc.head.appendChild(style);
 
-  let dismissed = false;
-  try { dismissed = win.sessionStorage.getItem('vitrolaDemoBannerClosed') === '1'; } catch { /* mostra o aviso */ }
-  if (!dismissed) {
-    const banner = doc.createElement('div');
-    banner.id = 'demo-banner';
-    banner.setAttribute('role', 'note');
-    banner.innerHTML =
-      '<b>DEMO</b><span class="long">músicas fictícias, áudio gerado no navegador</span>' +
-      '<a href="' + REPO_URL + '" target="_blank" rel="noopener">GitHub</a>' +
-      '<button type="button" aria-label="Fechar aviso">×</button>';
-    banner.querySelector('button').addEventListener('click', () => {
-      banner.remove();
-      try { win.sessionStorage.setItem('vitrolaDemoBannerClosed', '1'); } catch { /* ok */ }
-    });
-    doc.body.appendChild(banner);
-  }
+  // O "×" so recolhe o texto longo e o link do GitHub; "Tutorial" e "Início"
+  // ficam sempre ao alcance, senao quem fechou o aviso perderia o caminho de volta.
+  let collapsed = false;
+  try { collapsed = win.sessionStorage.getItem('vitrolaDemoBannerClosed') === '1'; } catch { /* mostra o aviso */ }
+  const banner = doc.createElement('div');
+  banner.id = 'demo-banner';
+  banner.setAttribute('role', 'note');
+  if (collapsed) banner.classList.add('collapsed');
+  banner.innerHTML =
+    '<b>DEMO</b><span class="long">músicas fictícias, áudio gerado no navegador</span>' +
+    '<button type="button" class="nav tour-open" title="Rever o passo a passo">Tutorial</button>' +
+    '<button type="button" class="nav home" title="Voltar para a tela inicial da demonstração">Início</button>' +
+    '<a class="gh" href="' + REPO_URL + '" target="_blank" rel="noopener">GitHub</a>' +
+    '<button type="button" class="close" aria-label="Recolher aviso">×</button>';
+  banner.querySelector('.close').addEventListener('click', () => {
+    banner.classList.add('collapsed');
+    try { win.sessionStorage.setItem('vitrolaDemoBannerClosed', '1'); } catch { /* ok */ }
+  });
+  banner.querySelector('.home').addEventListener('click', goToLanding);
+  banner.querySelector('.tour-open').addEventListener('click', () => { if (win.VitrolaTour) win.VitrolaTour.restart(); });
+  doc.body.appendChild(banner);
 })(typeof window !== 'undefined' ? window : globalThis);
