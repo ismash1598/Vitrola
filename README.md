@@ -1,145 +1,166 @@
 # Vitrola
 
-Bot de Discord multi-servidor + interface web de busca/player (Spotify para busca, YouTube para o áudio), com login via Discord, fila, playlists com visibilidade (privada/servidor/pública) e evolução futura para app Android via Capacitor.
+Bot de música para Discord **com painel web**: busca, fila com autoplay, playlists (privadas, do servidor ou públicas), histórico e uma "Cápsula do tempo" mensal, no estilo retrospectiva. Cada pessoa roda o **próprio bot no próprio computador** — não existe servidor central.
 
-## 1. Instalação
+> **Projeto pessoal, feito para estudo e uso próprio com amigos.** O áudio é extraído do YouTube com o yt-dlp, o que não é a forma oficialmente permitida pelos termos do YouTube. Veja [Uso responsável](#uso-responsável) antes de hospedar ou distribuir.
+
+## Instalação rápida (Windows)
+
+Você precisa de: Windows 10 ou 11, internet e uma conta no Discord. O resto o próprio instalador resolve.
+
+1. Baixe o projeto: botão verde **Code → Download ZIP** nesta página, e extraia a pasta.
+2. Dê dois cliques em **`Iniciar.bat`**.
+   - Na primeira vez ele instala o que falta (inclusive o Node.js, se você não tiver) e baixa as dependências. Pode levar alguns minutos.
+   - Se ele pedir para fechar e abrir de novo depois de instalar o Node.js, é só abrir o `Iniciar.bat` outra vez.
+3. O navegador abre sozinho numa **tela de configuração**. Siga o passo a passo dela (resumo abaixo).
+4. Clique em **Convidar o bot para o meu servidor**, escolha o servidor e autorize.
+5. Clique em **Abrir o Vitrola**, entre com o Discord, escolha o servidor e a música. O bot entra no canal de voz onde você estiver.
+
+Deixe a janela preta do `Iniciar.bat` aberta enquanto estiver usando — se você a fechar, o bot desliga. Nas próximas vezes é só abrir o `Iniciar.bat` de novo; nada precisa ser configurado outra vez.
+
+### O que a tela de configuração pede
+
+| Campo | Onde pegar |
+|---|---|
+| **Token do bot** | [Discord Developer Portal](https://discord.com/developers/applications) → New Application → **Bot** → **Reset Token** |
+| **Client ID** | Preenchido sozinho quando o token for válido (ou **OAuth2 → General**) |
+| **Client Secret** | **OAuth2 → Reset Secret** (é diferente do token do bot) |
+| **Redirect** | **OAuth2 → Redirects → Add Redirect**, colando o endereço que a própria tela mostra |
+
+Não precisa ligar nenhum "Privileged Intent". O token e o secret ficam só no arquivo `.env` do seu computador (ele nunca vai para o GitHub).
+
+Para trocar o token, ligar o Spotify depois ou mudar qualquer coisa, abra o **`Configurar.bat`**: ele reabre a mesma tela (campos em branco mantêm o valor atual).
+
+## Spotify (opcional)
+
+A busca de músicas funciona de dois jeitos:
+
+| | Spotify | YouTube Music |
+|---|---|---|
+| Resultados | Mais precisos: capa, artista e duração certinhos | Bons, mas às vezes vêm versões ou vídeos errados, sem duração |
+| Precisa configurar | Sim, com chaves de API | Não |
+
+**Se você não colocar as chaves do Spotify, a busca usa o YouTube Music automaticamente** — não há nada quebrado em deixar em branco. O áudio sempre vem do YouTube; o Spotify serve só para a busca.
+
+Para ligar a busca pelo Spotify:
+
+1. Entre em [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) e clique em **Create app**.
+2. Dê um nome e uma descrição quaisquer. Em **Redirect URI** coloque `http://127.0.0.1:3000` (não é usado de verdade) e marque **Web API**.
+3. Abra o app criado → **Settings**. Copie o **Client ID** e, em **View client secret**, o **Client Secret**.
+4. Abra o `Configurar.bat`, cole os dois na seção "Spotify" e salve.
+
+> **Importante:** atualmente o Spotify só libera a busca por API se a conta que criou o app tiver **Spotify Premium ativo**. Sem Premium a busca do Spotify responde erro 403 — e o Vitrola cai no YouTube Music sozinho. Se você assinar o Premium depois, pode levar algumas horas para o Spotify liberar; não precisa mexer em mais nada.
+
+O Spotify também é usado para **importar playlists por link**; isso funciona mesmo sem chaves.
+
+## Amigos usando de outro computador (opcional)
+
+Por padrão o painel só abre no computador onde o bot roda (`http://localhost:3000`). Para os amigos abrirem o painel no navegador deles, você precisa de um endereço público. O jeito mais simples é um túnel gratuito da Cloudflare:
+
+1. Instale o `cloudflared` (no PowerShell): `winget install Cloudflare.cloudflared`
+2. Com o bot rodando, em outro terminal: `cloudflared tunnel --url http://localhost:3000`
+3. Ele mostra um endereço `https://alguma-coisa.trycloudflare.com`. Abra o **`Configurar.bat`**, cole esse endereço em "Seus amigos entram de outro computador?" e salve.
+4. No Developer Portal, em **OAuth2 → Redirects**, adicione o novo redirect que a tela de configuração mostra.
+
+Esse endereço **muda toda vez que o túnel é reiniciado** — nesse caso repita os passos 3 e 4. Para um endereço fixo, use um [Cloudflare Tunnel nomeado](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) com um domínio seu.
+
+Quem só quer ouvir música no Discord **não precisa do painel**: o painel é só para quem controla o bot.
+
+## Problemas comuns
+
+- **"Invalid OAuth2 redirect_uri" ao entrar com o Discord:** o endereço do Redirect no Developer Portal precisa ser *exatamente* o que a tela de configuração mostrou. Se mudou o endereço público, adicione o novo.
+- **O bot não entra no canal de voz:** confira se ele foi convidado com as permissões *Connect*, *Speak* e *View Channels* (o link da tela de configuração já pede isso) e se você está em um canal de voz.
+- **A música não toca / erro do YouTube:** o YouTube muda com frequência e versões velhas do yt-dlp quebram. O `Iniciar.bat` já atualiza o yt-dlp a cada abertura — basta fechar e abrir de novo.
+- **A porta 3000 está ocupada:** adicione `PORT=3001` (ou outra) no arquivo `.env`, ou feche o programa que usa a porta.
+- **A janela fechou sozinha / quero ver o erro:** abra o `Iniciar.bat` pelo terminal (`cmd`) para a mensagem ficar na tela.
+
+## Para desenvolvedores
+
+Também dá para rodar sem o `.bat`:
 
 ```bash
 npm install
-cp .env.example .env
+npm start          # sem .env completo, abre a tela de configuração
+npm run dev        # reinicia sozinho ao editar
+npm test           # testes automatizados
 ```
 
-Preencha o `.env` com suas credenciais (veja seção 2).
+O `.env` pode ser preenchido à mão, a partir do `.env.example`.
 
-```bash
-npm start
-```
+### Painel
 
-O servidor sobe em `http://localhost:3000` (ou na porta definida em `PORT`). O bot não entra em nenhum canal de voz sozinho — ele conecta sob demanda, no canal de voz onde o usuário logado está, no servidor Discord escolhido na interface.
+- **Buscar**: pesquise por nome ou artista, toque agora, adicione à fila ou a uma playlist.
+- **Fila**: veja a música atual e as próximas; remova, reordene arrastando e ligue o autoplay (continua com músicas parecidas usando o Mix do YouTube).
+- **Playlists**: **privada** (só você), **servidor** (membros do servidor onde foi criada) ou **pública** (qualquer usuário logado). Importa do Spotify e do YouTube Music por link. Só o dono edita.
+- **Histórico / Cápsula do tempo**: retrospectiva mensal do servidor ou só sua, com cartão para compartilhar como imagem.
+- **Ouvir no site**: player independente do Discord, que toca no próprio navegador.
+- **Compartilhar**: gera uma imagem vertical da música que está tocando.
+- **Configurações (⚙)**: conta, servidor ativo e volume.
 
-## 2. Configuração
+### Como funciona por dentro
 
-### 2.1 Bot do Discord
+- **Um player por servidor** (`guildPlayers.js`): fila, seek, volume e autoplay independentes.
+- **Áudio**: o yt-dlp resolve a URL do áudio e o ffmpeg a envia ao Discord como Opus. Quando o volume é 100% e a fonte já é Opus, o áudio só é remuxado (`-c:a copy`), sem recodificar, o que reduz bastante o uso de CPU.
+- **Login**: OAuth2 do Discord com escopo mínimo (`identify guilds`); sessões com token opaco no header `x-session-token`, nunca em cookie.
+- **Segurança**: isolamento por servidor, checagem de permissão em cada rota, listas de permissão ao receber faixas do cliente e tickets de uso único para o áudio no navegador. Ver `docs/security-audit/` se presente.
+- **Persistência**: arquivos JSON (lowdb) com escrita atômica, em `data/` (fora do git).
+- **Testes**: `node --test`, sem dependências extras.
 
-1. Acesse https://discord.com/developers/applications e crie uma aplicação.
-2. Na aba **Bot**, crie o bot e copie o **token** → `DISCORD_TOKEN`.
-3. Não é necessário nenhum Privileged Gateway Intent além dos padrões (Guilds, Guild Voice States).
-4. Em **OAuth2 → URL Generator**, marque o escopo `bot` e as permissões `Connect`, `Speak`, `View Channels`, `Send Messages`.
-5. Use a URL gerada para convidar o bot a quantos servidores Discord quiser — o bot é multi-servidor: cada servidor toca sua própria fila/música de forma independente.
-
-### 2.2 Login com Discord (OAuth2)
-
-A interface web usa "Entrar com Discord" em vez de senha ou chave fixa — cada pessoa loga com a própria conta.
-
-1. No mesmo app do Developer Portal, aba **OAuth2 → General**, copie **Client ID** e **Client Secret** → `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` (não confundir com o token do bot).
-2. Em **OAuth2 → Redirects**, adicione a URL exata do seu backend + `/auth/discord/callback` (ex.: `https://sua-url.ngrok-free.app/auth/discord/callback` ou `https://seu-dominio.com/auth/discord/callback`).
-3. Preencha `DISCORD_REDIRECT_URI` e `WEB_ORIGIN` no `.env` com essa mesma URL.
-4. Se você estiver testando por um túnel temporário (ngrok etc.), a URL muda a cada reinício — atualize o `.env` **e** o Developer Portal toda vez que isso acontecer.
-
-Depois de logar, a pessoa escolhe (nas Configurações ⚙) em qual servidor em comum com o bot ela quer controlar a reprodução.
-
-### 2.3 Spotify (somente busca)
-
-1. Acesse https://developer.spotify.com/dashboard e crie um app.
-2. Copie **Client ID** e **Client Secret** → `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET`.
-
-> O áudio tocado no canal de voz vem do YouTube, não do Spotify — a API do Spotify não permite streaming de faixas completas por apps de terceiros. A busca (nome, artista, capa, duração) usa o Spotify; o backend localiza a mesma faixa no YouTube para reproduzir. Apps novos do Spotify (sem Extended Quota Mode) tem o parâmetro `limit` da busca restrito a no máximo 10 resultados — já configurado assim por padrão.
-
-## 3. Uso da interface
-
-- **Buscar**: pesquise por nome/artista, veja capa e resultados, toque agora, adicione à fila ou a uma playlist. Antes de buscar, mostra um acesso rápido às suas playlists.
-- **Fila**: veja a música atual e as próximas; remova itens ou arraste para reordenar; ligue/desligue o autoplay (continua com músicas parecidas quando a fila acaba, usando o Mix/Radio do YouTube).
-- **Playlists**: crie com três níveis de visibilidade — **privada** (só você vê), **servidor** (qualquer membro do servidor Discord onde foi criada vê), **pública** (qualquer usuário logado, de qualquer servidor com o bot, vê e pode tocar). Só o dono edita/apaga.
-- **Barra do player** (flutuante, fixa embaixo): play/pause, pular, barra de progresso com seek, volume.
-- **Configurações (⚙)**: entrar/sair com Discord, escolher o servidor ativo, e a URL do backend (útil quando hospedado remotamente ou rodando como app Android).
-
-## 4. Deploy 24/7
-
-Recomendado, do mais simples ao mais robusto:
-
-- **Railway / Render**: conecte o repositório Git, configure as variáveis de ambiente do `.env` no painel, plano always-on.
-- **VPS próprio**: rode com [pm2](https://pm2.keymetrics.io/) para manter o processo ativo e reiniciar sozinho:
-
-```bash
-npm install -g pm2
-pm2 start src/index.js --name meuplayer
-pm2 save
-pm2 startup
-```
-
-O `ffmpeg-static` já embute o binário do ffmpeg — não é necessário instalá-lo manualmente na maioria das plataformas.
-
-## 5. Empacotando como app Android (.apk) com Capacitor
-
-A interface web em `public/` é estática e independente (só faz `fetch` para a URL configurada nas Configurações), então é compatível nativamente com Capacitor.
-
-Pré-requisitos: Node instalado e [Android Studio](https://developer.android.com/studio) instalado.
-
-```bash
-npm install @capacitor/core @capacitor/cli @capacitor/android
-npx cap init "MeuPlayer" "com.seunome.meuplayer" --web-dir=public
-npx cap add android
-npx cap sync android
-npx cap open android
-```
-
-No Android Studio: **Build → Build Bundle(s)/APK(s) → Build APK(s)** para gerar o `.apk`, ou rode direto num emulador/celular conectado.
-
-O template padrão do Capacitor já inclui a permissão `INTERNET` no `AndroidManifest.xml`.
-
-Dentro do app, abra as Configurações (⚙) e aponte para a URL do backend hospedado (Railway/Render/VPS) — o app não roda o backend localmente, só se conecta a ele pela internet.
-
-## 6. Estrutura do projeto
+### Estrutura
 
 ```
-meuplayer/
-├── src/
-│   ├── index.js                  # inicializa bot + servidor Express juntos
-│   ├── discord/
-│   │   ├── bot.js                 # cliente discord.js (login, sem canal fixo)
-│   │   ├── guildPlayers.js        # um player independente por servidor (fila, play/pause/skip/seek/volume/autoplay)
-│   │   ├── guilds.js              # servidores em comum bot+usuario, auto-join no canal do usuario
-│   │   ├── oauth.js               # troca de code por token/usuario no login do Discord
-│   │   └── session.js             # sessoes em memoria (token opaco -> usuario)
-│   ├── spotify/spotifyClient.js  # autenticação + busca
-│   ├── youtube/youtubeSource.js  # busca, resolução de áudio e Mix/Radio (autoplay) via yt-dlp
-│   ├── api/
-│   │   ├── routes.js              # rotas principais da API
-│   │   ├── authRoutes.js          # /auth/discord/login e /callback
-│   │   └── authMiddleware.js      # exige sessao valida (x-session-token)
-│   └── db/playlists.js           # CRUD + visibilidade de playlists (lowdb)
-├── data/playlists.json           # banco local das playlists
-└── public/                       # front-end estático (também usado pelo Capacitor)
-    ├── index.html
-    ├── style.css
-    └── app.js
+src/
+├── index.js                 # sobe o bot + servidor web (ou a tela de configuração)
+├── setup/                   # tela de primeira configuração (grava o .env)
+├── discord/                 # bot, players por servidor, sessões, histórico
+├── spotify/spotifyClient.js # busca (opcional) e importação de playlists
+├── youtube/youtubeSource.js # busca, resolução de áudio e Mix (autoplay) via yt-dlp
+├── api/                     # rotas REST e login OAuth
+└── db/                      # playlists
+public/                      # front-end estático (também usado pelo app Android)
+test/                        # testes automatizados
+Iniciar.bat / Configurar.bat # launchers do Windows
 ```
 
-## 7. Endpoints da API
+### API
 
-Sob `/api`, exceto `/api/search` (pública), todas as rotas exigem o header `x-session-token` (obtido no login com Discord). Rotas de reprodução também exigem `guildId` (query string em GET, corpo em POST) apontando para um servidor em comum entre o usuário logado e o bot.
+Tudo em `/api`, exceto `/api/search` e `/api/public-stats` (públicas), exige o header `x-session-token`.
 
 | Método | Rota | Função |
 |---|---|---|
-| GET | `/auth/discord/login` | Redireciona para o login OAuth do Discord |
-| GET | `/auth/discord/callback` | Callback do OAuth; cria a sessão e redireciona de volta com `?sessionToken=` |
-| GET | `/api/me` | Dados do usuário logado |
-| POST | `/api/logout` | Encerra a sessão |
-| GET | `/api/guilds` | Servidores em comum entre o usuário e o bot |
-| GET | `/api/search?q=texto` | Busca músicas no Spotify |
-| GET | `/api/status?guildId=` | Estado atual do servidor: faixa, tempo decorrido, fila, volume, autoplay |
-| POST | `/api/queue` | Adiciona à fila (`{ guildId, track, playNow }`) — conecta ao canal de voz do usuário se ainda não estiver conectado |
-| DELETE | `/api/queue/:index?guildId=` | Remove da fila |
-| POST | `/api/queue/reorder` | Reordena a fila (`{ guildId, from, to }`) |
-| POST | `/api/pause` / `/api/resume` / `/api/skip` | Controles de reprodução (`{ guildId }`) |
-| POST | `/api/seek` | Pula para um tempo (`{ guildId, seconds }`) |
-| POST | `/api/volume` | Ajusta volume (`{ guildId, volume }`, 0 a 2) |
-| POST | `/api/autoplay` | Liga/desliga o autoplay (`{ guildId, enabled }`) |
-| GET/POST | `/api/playlists` | Lista (filtradas por visibilidade) / cria playlists (`{ name, visibility, guildId }`) |
-| GET/PATCH/DELETE | `/api/playlists/:id` | Detalhe / renomeia / apaga (editar exige ser o dono) |
-| POST/DELETE | `/api/playlists/:id/tracks[/:index]` | Adiciona/remove música (exige ser o dono) |
-| POST | `/api/playlists/:id/play` | Toca a playlist inteira (`{ guildId }`) — qualquer um com acesso de visualização pode tocar |
+| GET | `/auth/discord/login` · `/callback` | Login OAuth do Discord |
+| GET | `/api/me` · `/api/guilds` | Usuário logado · servidores em comum com o bot |
+| GET | `/api/search?q=` | Busca músicas (Spotify se configurado, senão YouTube Music) |
+| GET | `/api/status?guildId=` | Estado do servidor: faixa, tempo, fila, volume, autoplay |
+| POST/DELETE | `/api/queue` | Adiciona / limpa a fila |
+| POST | `/api/pause` · `/resume` · `/skip` · `/seek` · `/volume` · `/autoplay` | Controles |
+| GET/POST/PATCH/DELETE | `/api/playlists[/:id]` | Playlists, com visibilidade |
+| GET | `/api/retrospective?guildId=&scope=&month=` | Cápsula do tempo |
 
-## 8. Uso responsável
+### Hospedagem 24/7
 
-Tocar áudio extraído do YouTube em um servidor de Discord pessoal, sem fins comerciais, é prática comum entre bots caseiros, mas não é a forma oficialmente sancionada pelas políticas de uso do YouTube. Projetos desse tipo já sofreram bloqueios no passado (ex.: bot "Rythm", desligado em 2021). Avalie esse risco antes de hospedar publicamente ou distribuir o bot para terceiros.
+Quem quer o bot sempre ligado pode usar uma máquina que fique ligada (um VPS, por exemplo) com [pm2](https://pm2.keymetrics.io/):
+
+```bash
+npm install -g pm2
+pm2 start src/index.js --name vitrola
+pm2 save
+```
+
+Observação: o YouTube costuma bloquear o yt-dlp em IPs de datacenter. Em casa isso quase não acontece.
+
+### App Android (opcional)
+
+O painel em `public/` é estático e pode ser empacotado como `.apk` com [Capacitor](https://capacitorjs.com/) (as dependências do Capacitor ficam em `devDependencies`):
+
+```bash
+npx cap add android
+npx cap sync android
+cd android && gradlew assembleDebug
+```
+
+Dentro do app, abra as Configurações (⚙) e cole a URL do backend. Ela aparece só no app, não no site.
+
+## Uso responsável
+
+Tocar áudio extraído do YouTube em um servidor de Discord pessoal, sem fins comerciais, é prática comum entre bots caseiros, mas não é permitido pelos termos de uso do YouTube. Projetos assim já foram derrubados no passado (o bot Rythm, por exemplo, foi desligado em 2021). Este projeto é **educacional**: use por sua conta e risco, apenas com amigos, e **não o venda nem ofereça como serviço**. Não há afiliação com Discord, YouTube ou Spotify.

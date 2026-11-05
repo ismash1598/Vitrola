@@ -116,16 +116,30 @@ router.get('/public-stats', (req, res) => {
 });
 
 // ---- Busca (publica, nao precisa de login) ----
-// So YouTube Music: a busca do Spotify (client credentials) passou a exigir
-// assinatura Premium na conta dona do app so pra buscar, mesmo sem login de
-// usuario nenhum envolvido - inviavel de depender dela aqui.
+// Spotify primeiro (se as chaves estiverem no .env): os resultados sao faixas
+// de verdade (nome, artista, capa, duracao), enquanto a busca no YouTube Music
+// as vezes devolve versoes erradas ou videos que nao sao a musica. O Spotify
+// (client credentials) exige Premium na conta dona do app; sem isso ele
+// responde 403. Sem chaves, ou se o Spotify falhar, cai pro YouTube Music
+// pra busca nunca ficar fora do ar.
+let spotifyFailureLogged = false;
 router.get(
   '/search',
   asyncRoute(async (req, res) => {
     const q = req.query.q;
     if (!q) return res.status(400).json({ error: 'parametro q e obrigatorio' });
-    const tracks = await youtube.searchMusic(q);
-    res.json(tracks);
+    let tracks = null;
+    if (spotify.isConfigured()) {
+      try {
+        tracks = await spotify.searchTracks(q);
+      } catch (err) {
+        if (!spotifyFailureLogged) {
+          spotifyFailureLogged = true;
+          console.error('[search] Spotify falhou, usando YouTube Music como reserva (nao repete este aviso):', err.message);
+        }
+      }
+    }
+    res.json(tracks ?? (await youtube.searchMusic(q)));
   })
 );
 

@@ -4,6 +4,11 @@ const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 let cachedToken = null;
 let tokenExpiresAt = 0;
 
+// O Spotify e opcional: sem as chaves no .env a busca usa so o YouTube Music.
+function isConfigured() {
+  return Boolean(CLIENT_ID && CLIENT_SECRET);
+}
+
 async function getAccessToken() {
   if (cachedToken && Date.now() < tokenExpiresAt) {
     return cachedToken;
@@ -47,6 +52,29 @@ function mapTrack(item) {
     durationMs: item.duration_ms,
     spotifyUrl: item.external_urls?.spotify || null,
   };
+}
+
+// Apps do Spotify em modo de desenvolvimento (sem Extended Quota Mode aprovado)
+// tem o parametro limit do endpoint de busca restrito a no maximo 10.
+async function searchTracks(query, limit = 10) {
+  const token = await getAccessToken();
+
+  const url = new URL('https://api.spotify.com/v1/search');
+  url.searchParams.set('type', 'track');
+  url.searchParams.set('q', query);
+  url.searchParams.set('limit', String(limit));
+
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Falha ao buscar no Spotify: ${response.status} ${text}`);
+  }
+
+  const data = await response.json();
+  return (data.tracks?.items || []).map(mapTrack);
 }
 
 // Aceita link (open.spotify.com/playlist/ID), URI (spotify:playlist:ID) ou o
@@ -116,7 +144,7 @@ async function getPlaylist(playlistId) {
 
   const tracks = await mapWithConcurrency(embedTracks, 8, async (t) => {
     const id = t.uri.split(':')[2];
-    const full = await getTrackById(id);
+    const full = isConfigured() ? await getTrackById(id).catch(() => null) : null;
     if (full) return full;
     // Se a busca avulsa falhar (raro), usa so o que a pagina de embed tinha.
     return {
@@ -133,4 +161,4 @@ async function getPlaylist(playlistId) {
   return { name: entity.name, tracks };
 }
 
-module.exports = { extractPlaylistId, getPlaylist };
+module.exports = { isConfigured, searchTracks, extractPlaylistId, getPlaylist };

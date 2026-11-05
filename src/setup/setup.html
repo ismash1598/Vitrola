@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vitrola - Configuração</title>
+  <style>
+    :root {
+      --bg: #100f0d;
+      --card: #1a1815;
+      --line: #2e2a24;
+      --text: #f2eee6;
+      --muted: #a39b8c;
+      --accent: #e9d34a;
+      --danger: #ff7a6b;
+      --ok: #7ad08a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    main { max-width: 680px; margin: 0 auto; padding: 32px 20px 64px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 20px; }
+    .brand-dot { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--accent); position: relative; }
+    .brand-dot::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--accent); }
+    h1 { font-size: 28px; margin: 24px 0 6px; }
+    .lead { color: var(--muted); margin: 0 0 24px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 18px; }
+    .card h2 { margin: 0 0 4px; font-size: 18px; }
+    .tag { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); margin-left: 8px; vertical-align: middle; }
+    .card p { color: var(--muted); margin: 6px 0 12px; }
+    ol { padding-left: 22px; margin: 10px 0 16px; color: var(--muted); }
+    ol li { margin-bottom: 6px; }
+    li b, p b { color: var(--text); }
+    a { color: var(--accent); }
+    label { display: block; font-weight: 600; margin: 16px 0 6px; }
+    .hint { display: block; font-weight: 400; color: var(--muted); font-size: 14px; }
+    input[type=text], input[type=password] {
+      width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line);
+      background: #0e0d0b; color: var(--text); font: inherit;
+    }
+    input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .field-msg { font-size: 14px; margin-top: 6px; min-height: 1em; }
+    .field-msg.err { color: var(--danger); }
+    .field-msg.ok { color: var(--ok); }
+    .copybox { display: flex; gap: 8px; margin: 8px 0 4px; }
+    .copybox code { flex: 1; overflow-x: auto; white-space: nowrap; background: #0e0d0b; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; color: var(--accent); font-size: 14px; }
+    button, .btn {
+      font: inherit; font-weight: 700; cursor: pointer; border: 0; border-radius: 10px;
+      padding: 11px 18px; background: var(--accent); color: #1a1708; text-decoration: none; display: inline-block;
+    }
+    button.secondary { background: transparent; color: var(--text); border: 1px solid var(--line); }
+    button:disabled { opacity: .5; cursor: wait; }
+    .warn { border-left: 3px solid var(--accent); padding: 8px 12px; background: #1f1c12; border-radius: 0 10px 10px 0; color: var(--text); margin: 12px 0; font-size: 15px; }
+    details summary { cursor: pointer; font-weight: 600; }
+    .actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 24px; }
+    #done { display: none; }
+    .done-step { display: flex; gap: 12px; align-items: center; margin: 12px 0; flex-wrap: wrap; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="brand"><span class="brand-dot"></span> Vitrola</div>
+
+  <div id="form-area">
+    <h1>Vamos configurar o seu bot</h1>
+    <p class="lead">São só 3 passos e leva uns 5 minutos. Você só precisa fazer isso uma vez — depois é só abrir o Vitrola.</p>
+
+    <div class="card">
+      <h2>1. Crie o seu bot no Discord</h2>
+      <ol>
+        <li>Abra o <a href="https://discord.com/developers/applications" target="_blank" rel="noopener">Discord Developer Portal</a>, clique em <b>New Application</b> e dê um nome (esse será o nome do bot).</li>
+        <li>No menu da esquerda, abra <b>Bot</b> e clique em <b>Reset Token</b>. Copie o token e cole abaixo. Não precisa ligar nenhuma opção de "Intents".</li>
+        <li>No menu <b>OAuth2</b>, clique em <b>Reset Secret</b> e copie o <b>Client Secret</b>.</li>
+        <li>Ainda em <b>OAuth2</b>, em <b>Redirects</b>, clique em <b>Add Redirect</b>, cole o endereço abaixo e salve:
+          <div class="copybox"><code id="redirect-box"></code><button type="button" class="secondary" id="copy-redirect">Copiar</button></div>
+        </li>
+      </ol>
+
+      <label for="token">Token do bot <span class="hint">Bot → Reset Token. Fica só no seu computador, no arquivo .env.</span></label>
+      <input type="password" id="token" autocomplete="off" spellcheck="false" placeholder="Cole o token aqui" />
+      <div class="field-msg" id="msg-token"></div>
+
+      <label for="clientId">Client ID <span class="hint">Preenchido sozinho quando o token for válido (ou OAuth2 → General).</span></label>
+      <input type="text" id="clientId" autocomplete="off" spellcheck="false" placeholder="Número de 17 a 20 dígitos" />
+      <div class="field-msg" id="msg-clientId"></div>
+
+      <label for="clientSecret">Client Secret <span class="hint">OAuth2 → Reset Secret. É diferente do token do bot.</span></label>
+      <input type="password" id="clientSecret" autocomplete="off" spellcheck="false" placeholder="Cole o Client Secret aqui" />
+      <div class="field-msg" id="msg-clientSecret"></div>
+    </div>
+
+    <div class="card">
+      <h2>2. Spotify <span class="tag">opcional</span></h2>
+      <p>O Vitrola pode buscar músicas de dois jeitos: pelo <b>Spotify</b> (resultados mais precisos, com capa, artista e duração certinhos) ou pelo <b>YouTube Music</b> (funciona sem configurar nada). <b>Se você deixar em branco, a busca usa o YouTube Music automaticamente.</b> O áudio sempre vem do YouTube.</p>
+      <details>
+        <summary>Como ligar a busca pelo Spotify</summary>
+        <ol>
+          <li>Entre em <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">developer.spotify.com/dashboard</a> e clique em <b>Create app</b>.</li>
+          <li>Dê um nome e uma descrição qualquer. Em <b>Redirect URI</b> coloque <code>http://127.0.0.1:3000</code> (não é usado de verdade) e marque <b>Web API</b>.</li>
+          <li>Abra o app criado → <b>Settings</b>. Copie o <b>Client ID</b> e, em <b>View client secret</b>, o <b>Client Secret</b>.</li>
+        </ol>
+        <div class="warn"><b>Atenção:</b> hoje o Spotify só libera a busca por API se a conta que criou o app tiver <b>Spotify Premium</b> ativo. Sem Premium a busca do Spotify dá erro 403 — nesse caso o Vitrola cai no YouTube Music sozinho, então não tem problema deixar em branco.</div>
+        <label for="spotifyClientId">Spotify Client ID</label>
+        <input type="text" id="spotifyClientId" autocomplete="off" spellcheck="false" placeholder="32 caracteres" />
+        <div class="field-msg" id="msg-spotifyClientId"></div>
+        <label for="spotifyClientSecret">Spotify Client Secret</label>
+        <input type="password" id="spotifyClientSecret" autocomplete="off" spellcheck="false" placeholder="32 caracteres" />
+        <div class="field-msg" id="msg-spotifyClientSecret"></div>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>3. Seus amigos entram de outro computador? <span class="tag">opcional</span></h2>
+      <p>Por padrão o painel só abre no computador onde o bot está rodando, e isso já basta para você. Se quiser que amigos usem o painel pelo navegador deles, você precisa de um endereço público (por exemplo um túnel da Cloudflare). Se for o caso, cole-o abaixo — o passo a passo está no README.</p>
+      <details>
+        <summary>Tenho um endereço público</summary>
+        <label for="publicUrl">Endereço público <span class="hint">Ex.: https://meu-bot.trycloudflare.com</span></label>
+        <input type="text" id="publicUrl" autocomplete="off" spellcheck="false" placeholder="https://..." />
+        <div class="field-msg" id="msg-publicUrl"></div>
+      </details>
+    </div>
+
+    <div class="actions">
+      <button type="button" id="save">Salvar e iniciar o bot</button>
+      <span class="field-msg err" id="msg-form"></span>
+    </div>
+  </div>
+
+  <div id="done" class="card">
+    <h2>Tudo pronto!</h2>
+    <p>Configuração salva. Falta só <b>convidar o bot para o seu servidor</b>:</p>
+    <div class="done-step">
+      <a class="btn" id="invite" href="#" target="_blank" rel="noopener">Convidar o bot para o meu servidor</a>
+    </div>
+    <p>Depois de convidar, abra o painel, entre com o Discord e escolha o servidor. O bot entra no canal de voz onde você estiver.</p>
+    <div class="done-step">
+      <button type="button" id="open-app" disabled>Iniciando o bot…</button>
+    </div>
+  </div>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const FIELDS = ['token', 'clientId', 'clientSecret', 'spotifyClientId', 'spotifyClientSecret', 'publicUrl'];
+  let port = 3000;
+  let info = null;
+
+  function setMsg(field, text, kind) {
+    const el = $('msg-' + field);
+    el.textContent = text || '';
+    el.className = 'field-msg' + (kind ? ' ' + kind : '');
+  }
+
+  function updateRedirect() {
+    const typed = $('publicUrl').value.trim();
+    let origin = 'http://localhost:' + port;
+    try { if (typed) origin = new URL(typed).origin; } catch (e) { /* mostra o padrao */ }
+    $('redirect-box').textContent = origin + '/auth/discord/callback';
+  }
+
+  $('publicUrl').addEventListener('input', updateRedirect);
+  $('copy-redirect').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText($('redirect-box').textContent);
+      $('copy-redirect').textContent = 'Copiado!';
+      setTimeout(() => { $('copy-redirect').textContent = 'Copiar'; }, 1500);
+    } catch (e) { /* o usuario copia manualmente */ }
+  });
+
+  async function post(url, body) {
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    return { status: res.status, data: await res.json().catch(() => ({})) };
+  }
+
+  async function verifyToken() {
+    const token = $('token').value.trim();
+    if (!token) return;
+    setMsg('token', 'Conferindo com o Discord…');
+    const { data } = await post('/setup/verify', { token });
+    if (data.ok) {
+      setMsg('token', 'Token válido — bot "' + data.username + '".', 'ok');
+      if (!$('clientId').value.trim()) $('clientId').value = data.id;
+    } else {
+      setMsg('token', data.error, data.invalid ? 'err' : '');
+    }
+  }
+  $('token').addEventListener('change', verifyToken);
+
+  $('save').addEventListener('click', async () => {
+    FIELDS.forEach((f) => setMsg(f, ''));
+    setMsg('form', '');
+    $('save').disabled = true;
+    const body = {};
+    FIELDS.forEach((f) => { body[f] = $(f).value.trim(); });
+    const { status, data } = await post('/setup/save', body);
+    $('save').disabled = false;
+    if (status !== 200 || !data.ok) {
+      Object.entries(data.errors || {}).forEach(([field, msg]) => setMsg(field, msg, 'err'));
+      setMsg('form', data.errors ? 'Corrija os campos marcados acima.' : 'Não foi possível salvar.');
+      const first = Object.keys(data.errors || {})[0];
+      if (first && $(first)) $(first).focus();
+      return;
+    }
+    $('invite').href = data.inviteUrl;
+    $('form-area').classList.add('hidden');
+    $('done').style.display = 'block';
+    window.scrollTo(0, 0);
+    waitForApp(data.origin);
+  });
+
+  // O servidor de configuracao se desliga e o painel de verdade assume a mesma
+  // porta - espera ele responder antes de liberar o botao.
+  function waitForApp() {
+    const timer = setInterval(async () => {
+      try {
+        const res = await fetch('/api/public-stats', { cache: 'no-store' });
+        if (res.ok) {
+          clearInterval(timer);
+          $('open-app').disabled = false;
+          $('open-app').textContent = 'Abrir o Vitrola';
+          $('open-app').onclick = () => { location.href = '/'; };
+        }
+      } catch (e) { /* ainda trocando de servidor */ }
+    }, 1000);
+  }
+
+  (async () => {
+    try {
+      info = await (await fetch('/setup/info')).json();
+      port = info.port;
+      if (info.publicUrl) {
+        $('publicUrl').value = info.publicUrl;
+        $('publicUrl').closest('details').open = true;
+      }
+      const have = info.configured;
+      if (have.token) $('token').placeholder = 'Já configurado — deixe em branco para manter';
+      if (have.clientId) $('clientId').placeholder = 'Já configurado — deixe em branco para manter';
+      if (have.clientSecret) $('clientSecret').placeholder = 'Já configurado — deixe em branco para manter';
+      if (have.spotify) {
+        $('spotifyClientId').placeholder = 'Já configurado — deixe em branco para manter';
+        $('spotifyClientSecret').placeholder = 'Já configurado — deixe em branco para manter';
+      }
+    } catch (e) { /* usa os padroes */ }
+    updateRedirect();
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,2 @@
+# Scripts do Windows precisam de CRLF mesmo quando baixados como ZIP do GitHub.
+*.bat text eol=crlf
