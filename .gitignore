@@ -2,4 +2,5 @@ node_modules/
 .env
 data/
 android/
+dist-demo/
 server.log

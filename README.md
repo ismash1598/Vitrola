@@ -4,6 +4,15 @@ Bot de música para Discord **com painel web**: busca, fila com autoplay, playli
 
 > **Projeto pessoal, feito para estudo e uso próprio com amigos.** O áudio é extraído do YouTube com o yt-dlp, o que não é a forma oficialmente permitida pelos termos do YouTube. Veja [Uso responsável](#uso-responsável) antes de hospedar ou distribuir.
 
+## Demonstração
+
+**[Abra a demo no navegador](https://ismash1598.github.io/Vitrola/)** — sem login, sem instalar nada. Ela roda inteira no seu navegador: as músicas são **fictícias** e o áudio é gerado na hora, só para você ver a interface funcionando (busca, fila, autoplay, playlists, "Cápsula do tempo"). Nada é enviado ao Discord. A versão de verdade, com o bot tocando no canal de voz, é a que você instala abaixo.
+
+| | |
+|---|---|
+| ![Tela inicial](assets/screenshots/landing.png) | ![Fila de reprodução](assets/screenshots/fila.png) |
+| ![Playlists](assets/screenshots/playlists.png) | ![Cápsula do tempo](assets/screenshots/capsula-do-tempo.png) |
+
 ## Instalação rápida (Windows)
 
 Você precisa de: Windows 10 ou 11, internet e uma conta no Discord. O resto o próprio instalador resolve.
@@ -118,6 +127,9 @@ src/
 ├── api/                     # rotas REST e login OAuth
 └── db/                      # playlists
 public/                      # front-end estático (também usado pelo app Android)
+demo/demo.js                 # API simulada no navegador, só para o site de demonstração
+scripts/build-demo.js        # monta o site da demo (public/ + demo.js) em dist-demo/
+.github/workflows/pages.yml  # publica a demo no GitHub Pages a cada push na main
 test/                        # testes automatizados
 Iniciar.bat / Configurar.bat # launchers do Windows
 ```
@@ -136,6 +148,17 @@ Tudo em `/api`, exceto `/api/search` e `/api/public-stats` (públicas), exige o 
 | POST | `/api/pause` · `/resume` · `/skip` · `/seek` · `/volume` · `/autoplay` | Controles |
 | GET/POST/PATCH/DELETE | `/api/playlists[/:id]` | Playlists, com visibilidade |
 | GET | `/api/retrospective?guildId=&scope=&month=` | Cápsula do tempo |
+
+### Site de demonstração (GitHub Pages)
+
+O front-end é estático, então dá para publicá-lo sem backend. A pasta `demo/` tem um `demo.js` que é carregado **antes** do `app.js` e responde as chamadas `/api/*` dentro do navegador (login simulado, catálogo fictício, player simulado, áudio sintetizado pela Web Audio/WAV). O `public/` não é alterado: o `scripts/build-demo.js` copia tudo para `dist-demo/` e injeta o script.
+
+```bash
+npm run demo:build   # gera dist-demo/
+npm run demo:serve   # gera e abre em http://localhost:8080
+```
+
+Para publicar no seu fork: deixe o repositório **público**, vá em **Settings → Pages → Build and deployment → Source: GitHub Actions** e dê um push na `main` (ou rode o workflow **Demo (GitHub Pages)** na aba Actions). A demo fica em `https://SEU-USUARIO.github.io/NOME-DO-REPOSITORIO/` — se o seu endereço for diferente, ajuste o link na seção [Demonstração](#demonstração).
 
 ### Hospedagem 24/7
 
