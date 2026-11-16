@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Documentação do Vitrola</title>
+  <meta name="description" content="Documentação do Vitrola: instalação, configuração, uso do painel, Spotify, API e solução de problemas." />
+  <meta name="theme-color" content="#100f0d" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23100f0d' stroke='%23e9d34a' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='5.5' fill='%23e9d34a'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Caprasimo&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="site.css" />
+</head>
+<body class="docs">
+  <aside class="d-side" aria-label="Navegação da documentação">
+    <div class="d-side-head">
+      <a class="brand" href="./" aria-label="Vitrola, página inicial"><span class="brand-mark"></span><span class="brand-name">Vitrola</span></a>
+    </div>
+    <button class="d-search" type="button" data-open-search>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+      Buscar <kbd>Ctrl K</kbd>
+    </button>
+    <nav class="d-nav">
+      <h5>Começando</h5>
+      <ul>
+        <li><a href="#visao-geral">Visão geral</a></li>
+        <li><a href="#instalacao">Instalação rápida (Windows)</a></li>
+        <li><a href="#configuracao">Tela de configuração</a></li>
+      </ul>
+      <h5>Usando o painel</h5>
+      <ul>
+        <li><a href="#painel">Buscar, fila e player</a></li>
+        <li><a href="#playlists-uso">Playlists</a></li>
+        <li><a href="#capsula">Cápsula do tempo</a></li>
+        <li><a href="#ouvir-no-site">Ouvir no site</a></li>
+      </ul>
+      <h5>Avançado</h5>
+      <ul>
+        <li><a href="#spotify">Spotify (opcional)</a></li>
+        <li><a href="#amigos">Amigos de outro computador</a></li>
+        <li><a href="#hospedagem">Hospedagem 24/7</a></li>
+        <li><a href="#android">App Android</a></li>
+      </ul>
+      <h5>Referência</h5>
+      <ul>
+        <li><a href="#api">API</a></li>
+        <li><a href="#estrutura">Estrutura do projeto</a></li>
+        <li><a href="#seguranca">Como funciona por dentro</a></li>
+      </ul>
+      <h5>Ajuda</h5>
+      <ul>
+        <li><a href="#problemas">Problemas comuns</a></li>
+        <li><a href="#desenvolvedores">Para desenvolvedores</a></li>
+        <li><a href="#demo-site">Site de demonstração</a></li>
+        <li><a href="#uso-responsavel">Uso responsável</a></li>
+      </ul>
+    </nav>
+  </aside>
+  <div class="d-scrim"></div>
+
+  <header class="d-top">
+    <button class="d-burger" id="d-burger" type="button" aria-label="Abrir menu da documentação">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <a class="tablink on" href="docs.html">Documentação</a>
+    <a class="tablink hide-m" href="./">Página inicial</a>
+    <a class="tablink hide-m" href="demo/?entrar">Demonstração</a>
+    <a class="tablink hide-m" href="https://github.com/ismash1598/Vitrola" target="_blank" rel="noopener">GitHub</a>
+    <span class="grow"></span>
+    <a class="btn btn-accent btn-sm" href="demo/?entrar">Testar a demo</a>
+  </header>
+
+  <div class="d-main">
+    <div>
+      <!-- ============ VISÃO GERAL ============ -->
+      <article class="d-article" id="visao-geral">
+        <h1>Documentação do Vitrola</h1>
+        <p class="lede">Um bot de música para Discord com painel web: busca, fila com autoplay, playlists e uma Cápsula do tempo mensal. Cada pessoa roda o próprio bot no próprio computador, sem servidor central.</p>
+
+        <h2>Pronto para começar?</h2>
+        <p><span class="stepno">1</span> Baixe o projeto. Pelo botão <b>Code → Download ZIP</b> no GitHub, ou com o Git:</p>
+        <div class="code"><pre>git clone https://github.com/ismash1598/Vitrola.git</pre></div>
+        <p><span class="stepno">2</span> No Windows, dê dois cliques em <code>Iniciar.bat</code>. Ele instala o que faltar e abre uma tela de configuração no navegador.</p>
+        <div class="callout"><b class="t">Quer ver antes de instalar?</b><p>A <a href="demo/?entrar">demonstração</a> roda inteira no navegador, com músicas fictícias, sem login e sem instalar nada.</p></div>
+
+        <h2>Explore por assunto</h2>
+        <div class="d-cards">
+          <a href="#instalacao"><b>Instalação rápida</b><span>Do download à primeira música no Windows.</span></a>
+          <a href="#painel"><b>Painel</b><span>Buscar, fila, autoplay e controles do player.</span></a>
+          <a href="#playlists-uso"><b>Playlists</b><span>Privadas, do servidor ou públicas.</span></a>
+          <a href="#capsula"><b>Cápsula do tempo</b><span>A retrospectiva mensal do que se ouviu.</span></a>
+          <a href="#spotify"><b>Spotify</b><span>Busca mais precisa e importação de playlists.</span></a>
+          <a href="#api"><b>API</b><span>Rotas REST usadas pelo painel.</span></a>
+        </div>
+
+        <h2>O que você precisa</h2>
+        <ul>
+          <li>Windows 10 ou 11 (para o instalador fácil), internet e uma conta no Discord.</li>
+          <li>Um servidor do Discord onde você possa convidar o bot.</li>
+          <li>Opcional: chaves do Spotify, para uma busca mais precisa.</li>
+        </ul>
+        <div class="pn"></div>
+      </article>
+
+      <!-- ============ INSTALAÇÃO ============ -->
+      <article class="d-article" id="instalacao" hidden>
+        <h1>Instalação rápida (Windows)</h1>
+        <p class="lede">O instalador resolve o que faltar, inclusive o Node.js. Você só precisa de internet e de uma conta no Discord.</p>
+        <ol>
+          <li>Baixe o projeto: botão verde <b>Code → Download ZIP</b> no GitHub, e extraia a pasta.</li>
+          <li>Dê dois cliques em <code>Iniciar.bat</code>. Na primeira vez ele instala o que falta e baixa as dependências, o que pode levar alguns minutos. Se ele pedir para fechar e abrir de novo depois de instalar o Node.js, abra o <code>Iniciar.bat</code> outra vez.</li>
+          <li>O navegador abre sozinho numa <b>tela de configuração</b>. Siga o passo a passo dela (veja <a href="#configuracao">Tela de configuração</a>).</li>
+          <li>Clique em <b>Convidar o bot para o meu servidor</b>, escolha o servidor e autorize.</li>
+          <li>Clique em <b>Abrir o Vitrola</b>, entre com o Discord, escolha o servidor e a música. O bot entra no canal de voz onde você estiver.</li>
+        </ol>
+        <div class="callout warn"><b class="t">Importante</b><p>Deixe a janela preta do <code>Iniciar.bat</code> aberta enquanto estiver usando. Se você a fechar, o bot desliga.</p></div>
+        <p>Nas próximas vezes é só abrir o <code>Iniciar.bat</code> de novo; nada precisa ser configurado outra vez. Para trocar o token, ligar o Spotify depois ou mudar qualquer coisa, abra o <code>Configurar.bat</code>.</p>
+        <div class="pn"></div>
+      </article>
+
+      <!-- ============ CONFIGURAÇÃO ============ -->
+      <article class="d-article" id="configuracao" hidden>
+        <h1>Tela de configuração</h1>
+        <p class="lede">Na primeira execução, o Vitrola abre uma tela que grava o arquivo <code>.env</code> para você. Estes são os campos pedidos.</p>
+        <table>
+          <thead><tr><th>Campo</th><th>Onde pegar</th></tr></thead>
+          <tbody>
+            <tr><td><b>Token do bot</b></td><td><a href="https://discord.com/developers/applications" target="_blank" rel="noopener">Discord Developer Portal</a> → New Application → <b>Bot</b> → <b>Reset Token</b></td></tr>
+            <tr><td><b>Client ID</b></td><td>Preenchido sozinho quando o token for válido (ou <b>OAuth2 → General</b>)</td></tr>
+            <tr><td><b>Client Secret</b></td><td><b>OAuth2 → Reset Secret</b> (é diferente do token do bot)</td></tr>
+            <tr><td><b>Redirect</b></td><td><b>OAuth2 → Redirects → Add Redirect</b>, colando o endereço que a própria tela mostra</td></tr>
+          </tbody>
+        </table>
+        <div class="callout tip"><b class="t">Dica</b><p>Não precisa ligar nenhum "Privileged Intent". O token e o secret ficam só no arquivo <code>.env</code> do seu computador; ele nunca vai para o GitHub.</p></div>
+        <h2>Trocar a configuração depois</h2>
+        <p>Abra o <code>Configurar.bat</code>. Ele reabre a mesma tela. Campos em branco mantêm o valor atual.</p>
+        <h2>Preenchendo à mão</h2>
+        <p>Se preferir, copie o <code>.env.example</code> para <code>.env</code> e preencha os valores.</p>
+        <div class="pn"></div>
+      </article>
+
+      <!-- ============ PAINEL ============ -->
+      <article class="d-article" id="painel" hidden>
+        <h1>Buscar, fila e player</h1>
+        <p class="lede">O painel controla o bot pelo navegador, sem comandos para decorar.</p>
+        <div class="d-hero-img"><img src="img/buscar.webp" width="1900" height="1188" alt="Painel do Vitrola na tela Buscar" loading="lazy" style="border-radius:14px;border:1px solid var(--border-soft)" /></div>
+        <h2>Buscar</h2>
+        <p>Pesquise por nome ou artista. Em cada resultado dá para tocar agora, adicionar à fila ou adicionar a uma playlist.</p>
+        <h2>Fila</h2>
+        <p>Veja a música atual e as próximas. Remova faixas, reordene arrastando e ligue o <b>autoplay</b>: quando a fila acaba, o bot continua com músicas parecidas, usando o Mix do YouTube.</p>
+        <h2>Player</h2>
+        <p>A barra fixa embaixo tem play/pause, anterior, próxima, embaralhar, repetir, barra de progresso e volume.</p>
+        <h3>Compartilhar</h3>
+        <p>Gera uma imagem vertical da música que está tocando.</p>
+        <h3>Configurações (⚙)</h3>
+        <p>Conta, servidor ativo e volume.</p>
+        <div class="pn"></div>
+      </article>
+
+      <!-- ============ PLAYLISTS ============ -->
+      <article class="d-article" id="playlists-uso" hidden>
+        <h1>Playlists</h1>
+        <p class="lede">Organize as suas músicas e decida quem pode ver e tocar cada playlist.</p>
+        <table>
+          <thead><tr><th>Tipo</th><th>Quem pode ver e tocar</th></tr></thead>
+          <tbody>
+            <tr><td><b>Privada</b></td><td>Só você.</td></tr>
+            <tr><td><b>Servidor</b></td><td>Os membros do servidor onde ela foi criada.</td></tr>
+            <tr><td><b>Pública</b></td><td>Qualquer usuário logado.</td></tr>
+          </tbody>
+        </table>
+        <p>Só o dono edita uma playlist.</p>
+        <h2>Importar por link</h2>
+        <p>Cole o link de uma playlist do <b>Spotify</b> ou do <b>YouTube Music</b>. A importação do Spotify funciona mesmo sem chaves configuradas.</p>
+        <div class="d-hero-img"><img src="img/playlists.webp" width="1900" height="1188" alt="Tela Playlists do Vitrola" loading="lazy" style="border-radius:14px;border:1px solid var(--border-soft)" /></div>
+        <div class="pn"></div>
+      </article>
+
+      <!-- ============ CÁPSULA ============ -->
+      <article class="d-article" id="capsula" hidden>
+        <h1>Cápsula do tempo</h1>
+        <p class="lede">Uma retrospectiva mensal do que o servidor (ou só você) ouviu, no estilo das retrospectivas de fim de ano.</p>
+        <div class="d-hero-img"><img src="img/capsula.webp" width="1900" height="1188" alt="Tela Cápsula do tempo do Vitrola" loading="lazy" style="border-radius:14px;border:1px solid var(--border-soft)" /></div>
+        <ul>
+          <li>Alterne entre <b>Do servidor</b> e <b>Pessoal</b>.</li>
+          <li>Veja minutos ouvidos, músicas tocadas e artistas diferentes.</li>
+          <li>Ranking dos artistas mais ouvidos e navegação pelos meses anteriores.</li>
+          <li>Um cartão para compartilhar como imagem.</li>
+        </ul>
+        <p>Os dados vêm do histórico de reprodução, guardado em arquivos locais na pasta <code>data/</code> do seu computador.</p>
+        <div class="pn"></div>
+      </article>
+
+      <!-- ============ OUVIR NO SITE ============ -->
+      <article class="d-article" id="ouvir-no-site" hidden>
+        <h1>Ouvir no site</h1>
+        <p class="lede">Um player independente do Discord, que toca no próprio navegador.</p>
+        <p>Depois de entrar, o Vitrola pergunta <b>Como você quer ouvir?</b></p>
+        <table>
+          <thead><tr><th>Modo</th><th>O que faz</th></tr></thead>
+          <tbody>
+            <tr><td><b>Ouvir no site</b></td><td>Player direto no navegador, sem precisar entrar em canal de voz nenhum.</td></tr>
+            <tr><td><b>Ouvir no Discord</b></td><td>Controla o bot tocando no canal de voz de um dos seus servidores.</td></tr>
+          </tbody>
+        </table>
+        <div class="d-hero-img"><img src="img/modo.webp" width="1500" height="938" alt="Tela de escolha de modo do Vitrola" loading="lazy" style="border-radius:14px;border:1px solid var(--border-soft)" /></div>
+        <div class="pn"></div>
+      </article>
+
+      <!-- ============ SPOTIFY ============ -->
+      <article class="d-article" id="spotify" hidden>
+        <h1>Spotify (opcional)</h1>
+        <p class="lede">A busca funciona de dois jeitos. Sem as chaves do Spotify, o Vitrola usa o YouTube Music automaticamente.</p>
+        <table>
+          <thead><tr><th></th><th>Spotify</th><th>YouTube Music</th></tr></thead>
+          <tbody>
+            <tr><td><b>Resultados</b></td><td>Mais precisos: capa, artista e duração certinhos</td><td>Bons, mas às vezes vêm versões ou vídeos errados, sem duração</td></tr>
+            <tr><td><b>Precisa configurar</b></td><td>Sim, com chaves de API</td><td>Não</td></tr>
+          </tbody>
+        </table>
+        <p>O áudio sempre vem do YouTube; o Spotify serve só para a busca.</p>
+        <h2>Ligar a busca pelo Spotify</h2>
+        <ol>
+          <li>Entre em <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">developer.spotify.com/dashboard</a> e clique em <b>Create app</b>.</li>
+          <li>Dê um nome e uma descrição quaisquer. Em <b>Redirect URI</b> coloque <code>http://127.0.0.1:3000</code> (não é usado de verdade) e marque <b>Web API</b>.</li>
+          <li>Abra o app criado → <b>Settings</b>. Copie o <b>Client ID</b> e, em <b>View client secret</b>, o <b>Client Secret</b>.</li>
+          <li>Abra o <code>Configurar.bat</code>, cole os dois na seção "Spotify" e salve.</li>
+        </ol>
+        <div class="callout warn"><b class="t">Importante</b><p>Atualmente o Spotify só libera a busca por API se a conta que criou o app tiver <b>Spotify Premium ativo</b>. Sem Premium a busca responde erro 403 e o Vitrola cai no YouTube Music sozinho. Se você assinar o Premium depois, pode levar algumas horas para liberar; não precisa mexer em mais nada.</p></div>
+        <div class="pn"></div>
+      </article>
+
+      <!-- ============ AMIGOS ============ -->
+      <article class="d-article" id="amigos" hidden>
+        <h1>Amigos de outro computador</h1>
+        <p class="lede">Por padrão o painel só abre no computador onde o bot roda (<code>http://localhost:3000</code>). Para os amigos abrirem no navegador deles, você precisa de um endereço público.</p>
+        <p>O jeito mais simples é um túnel gratuito da Cloudflare:</p>
+        <ol>
+          <li>Instale o <code>cloudflared</code>, no PowerShell:
+            <div class="code" style="margin-top:10px"><pre>winget install Cloudflare.cloudflared</pre></div></li>
+          <li>Com o bot rodando, em outro terminal:
+            <div class="code" style="margin-top:10px"><pre>cloudflared tunnel --url http://localhost:3000</pre></div></li>
+          <li>Ele mostra um endereço <code>https://alguma-coisa.trycloudflare.com</code>. Abra o <code>Configurar.bat</code>, cole esse endereço em "Seus amigos entram de outro computador?" e salve.</li>
+          <li>No Developer Portal, em <b>OAuth2 → Redirects</b>, adicione o novo redirect que a tela de configuração mostra.</li>
+        </ol>
+        <div class="callout warn"><b class="t">Atenção</b><p>Esse endereço <b>muda toda vez que o túnel é reiniciado</b>; nesse caso repita os passos 3 e 4. Para um endereço fixo, use um <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/" target="_blank" rel="noopener">Cloudflare Tunnel nomeado</a> com um domínio seu.</p></div>
+        <p>Quem só quer ouvir música no Discord <b>não precisa do painel</b>: o painel é só para quem controla o bot.</p>
+        <div class="pn"></div>
+      </article>
+
+      <!-- ============ HOSPEDAGEM ============ -->
+      <article class="d-article" id="hospedagem" hidden>
+        <h1>Hospedagem 24/7</h1>
+        <p class="lede">Quem quer o bot sempre ligado pode usar uma máquina que fique ligada, como um VPS, com o pm2.</p>
+        <div class="code"><pre>npm install -g pm2
+pm2 start src/index.js --name vitrola
+pm2 save</pre></div>
+        <div class="callout warn"><b class="t">Observação</b><p>O YouTube costuma bloquear o yt-dlp em IPs de datacenter. Em casa isso quase não acontece.</p></div>
+        <div class="pn"></div>
+      </article>
+
+      <!-- ============ ANDROID ============ -->
+      <article class="d-article" id="android" hidden>
+        <h1>App Android</h1>
+        <p class="lede">O painel em <code>public/</code> é estático e pode ser empacotado como <code>.apk</code> com o Capacitor.</p>
+        <div class="code"><pre>npx cap add android
+npx cap sync android
+cd android &amp;&amp; gradlew assembleDebug</pre></div>
+        <p>Dentro do app, abra as Configurações (⚙) e cole a URL do backend. Ela aparece só no app, não no site.</p>
+        <div class="pn"></div>
+      </article>
+
+      <!-- ============ API ============ -->
+      <article class="d-article" id="api" hidden>
+        <h1>API</h1>
+        <p class="lede">Tudo em <code>/api</code>, exceto <code>/api/search</code> e <code>/api/public-stats</code> (públicas), exige o header <code>x-session-token</code>.</p>
+        <table>
+          <thead><tr><th>Método</th><th>Rota</th><th>Função</th></tr></thead>
+          <tbody>
+            <tr><td>GET</td><td><code>/auth/discord/login</code> · <code>/callback</code></td><td>Login OAuth do Discord</td></tr>
+            <tr><td>GET</td><td><code>/api/me</code> · <code>/api/guilds</code></td><td>Usuário logado · servidores em comum com o bot</td></tr>
+            <tr><td>GET</td><td><code>/api/search?q=</code></td><td>Busca músicas (Spotify se configurado, senão YouTube Music)</td></tr>
+            <tr><td>GET</td><td><code>/api/status?guildId=</code></td><td>Estado do servidor: faixa, tempo, fila, volume, autoplay</td></tr>
+            <tr><td>POST/DELETE</td><td><code>/api/queue</code></td><td>Adiciona / limpa a fila</td></tr>
+            <tr><td>POST</td><td><code>/api/pause</code> · <code>/resume</code> · <code>/skip</code> · <code>/seek</code> · <code>/volume</code> · <code>/autoplay</code></td><td>Controles</td></tr>
+            <tr><td>GET/POST/PATCH/DELETE</td><td><code>/api/playlists[/:id]</code></td><td>Playlists, com visibilidade</td></tr>
+            <tr><td>GET</td><td><code>/api/retrospective?guildId=&amp;scope=&amp;month=</code></td><td>Cápsula do tempo</td></tr>
+          </tbody>
+        </table>
+        <div class="pn"></div>
+      </article>
+
+      <!-- ============ ESTRUTURA ============ -->
+      <article class="d-article" id="estrutura" hidden>
+        <h1>Estrutura do projeto</h1>
+        <p class="lede">Um mapa das pastas principais do repositório.</p>
+        <div class="code"><pre>src/
+├── index.js                 # sobe o bot + servidor web (ou a tela de configuração)
+├── setup/                   # tela de primeira configuração (grava o .env)
+├── discord/                 # bot, players por servidor, sessões, histórico
+├── spotify/spotifyClient.js # busca (opcional) e importação de playlists
+├── youtube/youtubeSource.js # busca, resolução de áudio e Mix (autoplay) via yt-dlp
+├── api/                     # rotas REST e login OAuth
+└── db/                      # playlists
+public/                      # front-end estático (também usado pelo app Android)
+demo/                        # API simulada e tutorial guiado, só para a demonstração
+site/                        # esta página de apresentação e a documentação
+scripts/build-demo.js        # monta o site publicado (apresentação + demo)
+.github/workflows/pages.yml  # publica no GitHub Pages a cada push na main
+test/                        # testes automatizados
+Iniciar.bat / Configurar.bat # launchers do Windows</pre></div>
+        <div class="pn"></div>
+      </article>
+
+      <!-- ============ INTERNO ============ -->
+      <article class="d-article" id="seguranca" hidden>
+        <h1>Como funciona por dentro</h1>
+        <p class="lede">Os princípios por trás do player, do áudio, do login e da segurança.</p>
+        <h2>Um player por servidor</h2>
+        <p>Cada servidor tem o próprio player (<code>guildPlayers.js</code>), com fila, seek, volume e autoplay independentes.</p>
+        <h2>Áudio</h2>
+        <p>O yt-dlp resolve a URL do áudio e o ffmpeg a envia ao Discord como Opus. Quando o volume é 100% e a fonte já é Opus, o áudio só é remuxado (<code>-c:a copy</code>), sem recodificar, o que reduz bastante o uso de CPU.</p>
+        <h2>Login</h2>
+        <p>OAuth2 do Discord com escopo mínimo (<code>identify guilds</code>). As sessões usam um token opaco no header <code>x-session-token</code>, nunca em cookie.</p>
+        <h2>Segurança</h2>
+        <ul>
+          <li>Isolamento por servidor.</li>
+          <li>Checagem de permissão em cada rota.</li>
+          <li>Listas de permissão ao receber faixas do cliente.</li>
+          <li>Tickets de uso único para o áudio no navegador.</li>
+        </ul>
+        <h2>Persistência e testes</h2>
+        <p>Arquivos JSON (lowdb) com escrita atômica, em <code>data/</code> (fora do git). Os testes usam o <code>node --test</code>, sem dependências extras.</p>
+        <div class="pn"></div>
+      </article>
+
+      <!-- ============ PROBLEMAS ============ -->
+      <article class="d-article" id="problemas" hidden>
+        <h1>Problemas comuns</h1>
+        <p class="lede">As soluções para os tropeços mais frequentes.</p>
+        <h3>"Invalid OAuth2 redirect_uri" ao entrar com o Discord</h3>
+        <p>O endereço do Redirect no Developer Portal precisa ser <i>exatamente</i> o que a tela de configuração mostrou. Se mudou o endereço público, adicione o novo.</p>
+        <h3>O bot não entra no canal de voz</h3>
+        <p>Confira se ele foi convidado com as permissões <i>Connect</i>, <i>Speak</i> e <i>View Channels</i> (o link da tela de configuração já pede isso) e se você está em um canal de voz.</p>
+        <h3>A música não toca / erro do YouTube</h3>
+        <p>O YouTube muda com frequência e versões velhas do yt-dlp quebram. O <code>Iniciar.bat</code> já atualiza o yt-dlp a cada abertura: basta fechar e abrir de novo.</p>
+        <h3>A porta 3000 está ocupada</h3>
+        <p>Adicione <code>PORT=3001</code> (ou outra) no arquivo <code>.env</code>, ou feche o programa que usa a porta.</p>
+        <h3>A janela fechou sozinha / quero ver o erro</h3>
+        <p>Abra o <code>Iniciar.bat</code> pelo terminal (<code>cmd</code>) para a mensagem ficar na tela.</p>
+        <div class="pn"></div>
+      </article>
+
+      <!-- ============ DEV ============ -->
+      <article class="d-article" id="desenvolvedores" hidden>
+        <h1>Para desenvolvedores</h1>
+        <p class="lede">Também dá para rodar sem o <code>.bat</code>, em qualquer sistema com Node.js 18 ou mais novo.</p>
+        <div class="code"><pre>npm install
+npm start          # sem .env completo, abre a tela de configuração
+npm run dev        # reinicia sozinho ao editar
+npm test           # testes automatizados</pre></div>
+        <p>O <code>.env</code> pode ser preenchido à mão, a partir do <code>.env.example</code>.</p>
+        <div class="pn"></div>
+      </article>
+
+      <!-- ============ DEMO ============ -->
+      <article class="d-article" id="demo-site" hidden>
+        <h1>Site de demonstração</h1>
+        <p class="lede">O front-end é estático, então dá para publicá-lo sem backend. Foi assim que esta demonstração foi feita.</p>
+        <p>A pasta <code>demo/</code> tem um <code>demo.js</code> que é carregado <b>antes</b> do <code>app.js</code> e responde as chamadas <code>/api/*</code> dentro do navegador: login simulado, catálogo fictício, player simulado e áudio sintetizado pela Web Audio. O <code>tour.js</code> é o tutorial guiado, que destaca o botão certo em cada passo.</p>
+        <div class="code"><pre>npm run demo:build   # gera dist-demo/
+npm run demo:serve   # gera e abre em http://localhost:8080</pre></div>
+        <p>Para publicar no seu fork: deixe o repositório <b>público</b>, vá em <b>Settings → Pages → Build and deployment → Source: GitHub Actions</b> e dê um push na <code>main</code>.</p>
+        <p><a class="btn btn-accent btn-sm" href="demo/?entrar" style="text-decoration:none;color:var(--accent-contrast)">Abrir a demonstração</a></p>
+        <div class="pn"></div>
+      </article>
+
+      <!-- ============ USO RESPONSÁVEL ============ -->
+      <article class="d-article" id="uso-responsavel" hidden>
+        <h1>Uso responsável</h1>
+        <p class="lede">Leia antes de hospedar ou distribuir.</p>
+        <div class="callout warn"><b class="t">Projeto educacional</b><p>Tocar áudio extraído do YouTube em um servidor de Discord pessoal, sem fins comerciais, é prática comum entre bots caseiros, mas não é permitido pelos termos de uso do YouTube. Projetos assim já foram derrubados no passado (o bot Rythm, por exemplo, foi desligado em 2021).</p></div>
+        <p>Use por sua conta e risco, apenas com amigos, e <b>não o venda nem ofereça como serviço</b>. Não há afiliação com Discord, YouTube ou Spotify.</p>
+        <h2>Licença</h2>
+        <p>Código sob a <a href="https://github.com/ismash1598/Vitrola/blob/main/LICENSE" target="_blank" rel="noopener">licença MIT</a>. A licença cobre o código deste projeto; ela não dá nenhum direito sobre as músicas, nem sobre o YouTube, o Spotify ou o Discord, que seguem os próprios termos.</p>
+        <div class="pn"></div>
+      </article>
+    </div>
+
+    <aside class="d-toc" aria-label="Nesta página">
+      <h6><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h13"/></svg>Nesta página</h6>
+      <ul id="toc"></ul>
+    </aside>
+  </div>
+
+  <div class="pal" id="pal" role="dialog" aria-modal="true" aria-label="Buscar na documentação">
+    <div class="pal-box">
+      <div class="pal-in">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+        <input id="pal-input" type="search" placeholder="Buscar na documentação…" autocomplete="off" aria-label="Buscar na documentação" />
+      </div>
+      <ul class="pal-list" id="pal-list"></ul>
+    </div>
+  </div>
+
+  <script src="site.js"></script>
+</body>
+</html>

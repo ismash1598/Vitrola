@@ -6,6 +6,7 @@ on:
     paths:
       - 'public/**'
       - 'demo/**'
+      - 'site/**'
       - 'scripts/build-demo.js'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
@@ -30,7 +31,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Gerar o site da demo
+      - name: Gerar o site (apresentação, documentação e demo)
         run: node scripts/build-demo.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

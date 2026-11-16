@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vitrola · O bot de música do seu servidor Discord</title>
+  <meta name="description" content="Bot de música para Discord com painel web: busca, fila com autoplay, playlists privadas, do servidor ou públicas, e Cápsula do tempo. Roda no seu computador, é open source." />
+  <meta property="og:title" content="Vitrola · O bot de música do seu servidor Discord" />
+  <meta property="og:description" content="Busca, fila com autoplay e playlists, tocando direto no canal de voz. Experimente a demonstração no navegador." />
+  <meta property="og:image" content="https://ismash1598.github.io/Vitrola/img/buscar.webp" />
+  <meta name="theme-color" content="#100f0d" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23100f0d' stroke='%23e9d34a' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='5.5' fill='%23e9d34a'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Caprasimo&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="site.css" />
+</head>
+<body>
+  <a class="skip" href="#conteudo">Pular para o conteúdo</a>
+
+  <div class="nav-shell">
+    <nav class="nav" id="nav" aria-label="Principal">
+      <a class="brand" href="./" aria-label="Vitrola, início"><span class="brand-mark"></span><span class="brand-name">Vitrola</span></a>
+      <ul class="nav-links" id="nav-links">
+        <li><a href="#recursos">Recursos</a></li>
+        <li><a href="#telas">Telas</a></li>
+        <li><a href="#como-funciona">Como funciona</a></li>
+        <li><a href="#playlists">Playlists</a></li>
+        <li><a href="#faq">Perguntas</a></li>
+        <li><a href="docs.html">Documentação</a></li>
+        <li class="only-mobile"><a href="demo/?entrar">Testar a demonstração</a></li>
+        <li class="only-mobile"><a href="https://github.com/ismash1598/Vitrola" target="_blank" rel="noopener">GitHub</a></li>
+      </ul>
+      <div class="nav-cta">
+        <a class="icon-btn" href="https://github.com/ismash1598/Vitrola" target="_blank" rel="noopener" aria-label="GitHub">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a11.5 11.5 0 00-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.16.08 1.76 1.19 1.76 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 015.78 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0012 .5z"/></svg>
+        </a>
+        <a class="btn btn-accent btn-sm" href="demo/?entrar">Testar a demo</a>
+      </div>
+      <button class="nav-toggle icon-btn" id="nav-toggle" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="nav-links">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+    </nav>
+  </div>
+
+  <main id="conteudo">
+    <!-- HERO: mesma apresentação da tela inicial do app -->
+    <header class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <span class="badge"><i></i> Demonstração ao vivo no navegador</span>
+          <h1 class="h1">O bot de música do seu servidor <em>Discord</em></h1>
+          <p class="lead">Busca, fila com autoplay e playlists — tocando direto no canal de voz. Entre com o Discord e comece a tocar.</p>
+
+          <div class="hero-feats">
+            <div class="feat-mini">
+              <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg></div>
+              <div><b>Busque qualquer música</b><span>Spotify ou YouTube Music, tocando direto no canal de voz</span></div>
+            </div>
+            <div class="feat-mini">
+              <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l3 3-3 3"/><path d="M20 6H8a4 4 0 00-4 4v1"/><path d="M7 21l-3-3 3-3"/><path d="M4 18h12a4 4 0 004-4v-1"/></svg></div>
+              <div><b>Fila com autoplay</b><span>Quando a música acaba, entra outra parecida sozinho</span></div>
+            </div>
+            <div class="feat-mini">
+              <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h13M4 11h13M4 16h7"/><circle cx="17" cy="17" r="3"/></svg></div>
+              <div><b>Privada, do servidor ou pública</b><span>Você escolhe quem pode ver e tocar cada playlist</span></div>
+            </div>
+          </div>
+
+          <div class="cta-row">
+            <a class="btn btn-discord" href="demo/?entrar">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.3 5.3A16 16 0 0015.4 4l-.3.6a12 12 0 013.4 1.7 11.4 11.4 0 00-9.9 0A12 12 0 0112 4.6L11.6 4a16 16 0 00-3.9 1.3C5.2 9 4.5 12.6 4.9 16.2a15.9 15.9 0 004.8 2.4l.6-1a10.4 10.4 0 01-1.7-.8l.4-.3a11.4 11.4 0 009 0l.4.3a10.4 10.4 0 01-1.7.8l.6 1a15.9 15.9 0 004.8-2.4c.4-3.9-.4-7.5-2.8-10.9zM9.7 14.2c-.9 0-1.7-.9-1.7-1.9s.7-1.9 1.7-1.9 1.7.9 1.7 1.9-.8 1.9-1.7 1.9zm4.6 0c-.9 0-1.7-.9-1.7-1.9s.7-1.9 1.7-1.9 1.7.9 1.7 1.9-.8 1.9-1.7 1.9z"/></svg>
+              Entrar na demonstração
+            </a>
+            <a class="btn btn-ghost" href="docs.html">Ler a documentação</a>
+          </div>
+          <p class="footnote">Sem login de verdade: é só uma demonstração, nada é enviado ao Discord.</p>
+        </div>
+
+        <div class="hero-art" aria-hidden="true">
+          <div class="glow"></div>
+          <div class="vinyl">
+            <div class="vinyl-wrap"><div class="disc"></div><div class="spindle"></div></div>
+            <div class="arm-base"></div>
+            <div class="arm"></div>
+          </div>
+          <div class="now">
+            <div class="art"></div>
+            <div class="txt"><b>Tocando agora no #geral</b><small>Só Rock 2 · 38 faixas na fila</small></div>
+            <div class="eq"><i></i><i></i><i></i><i></i></div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="strip">
+      <div class="wrap strip-in">
+        <span><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.3 5.3A16 16 0 0015.4 4l-.3.6a12 12 0 013.4 1.7 11.4 11.4 0 00-9.9 0A12 12 0 0112 4.6L11.6 4a16 16 0 00-3.9 1.3C5.2 9 4.5 12.6 4.9 16.2a15.9 15.9 0 004.8 2.4l.6-1a10.4 10.4 0 01-1.7-.8l.4-.3a11.4 11.4 0 009 0l.4.3a10.4 10.4 0 01-1.7.8l.6 1a15.9 15.9 0 004.8-2.4c.4-3.9-.4-7.5-2.8-10.9z"/></svg>Discord</span>
+        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M7.5 9.5c3-1 6.5-.7 9 .8M8 12.6c2.5-.8 5.2-.5 7.4.8M8.6 15.4c2-.5 4-.3 5.7.7"/></svg>Spotify</span>
+        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="4"/><path d="M10.5 9.5l4 2.5-4 2.5z" fill="currentColor"/></svg>YouTube Music</span>
+        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6z"/></svg>Código aberto · MIT</span>
+        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>Roda no seu computador</span>
+      </div>
+    </div>
+
+    <!-- RECURSOS -->
+    <section class="section" id="recursos">
+      <div class="wrap">
+        <div class="head-center reveal">
+          <span class="eyebrow">Recursos</span>
+          <h2 class="h2">Tudo que um bot de música precisa, num painel bonito</h2>
+          <p class="sub">Controle o bot pelo navegador, sem decorar comandos. Cada servidor tem o próprio player, a própria fila e o próprio volume.</p>
+        </div>
+        <div class="grid-3">
+          <article class="card reveal">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg></div>
+            <h3>Busca por nome ou artista</h3>
+            <p>Resultados do Spotify, com capa, artista e duração certinhos. Sem chaves, a busca usa o YouTube Music sozinha.</p>
+          </article>
+          <article class="card reveal">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l3 3-3 3"/><path d="M20 6H8a4 4 0 00-4 4v1"/><path d="M7 21l-3-3 3-3"/><path d="M4 18h12a4 4 0 004-4v-1"/></svg></div>
+            <h3>Fila com autoplay</h3>
+            <p>Reordene arrastando, remova faixas e ligue o autoplay: quando a fila acaba, entram músicas parecidas.</p>
+          </article>
+          <article class="card reveal">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h13M4 11h13M4 16h7"/><circle cx="17" cy="17" r="3"/></svg></div>
+            <h3>Playlists com permissão</h3>
+            <p>Privada, do servidor ou pública. Importe do Spotify e do YouTube Music por link. Só o dono edita.</p>
+          </article>
+          <article class="card reveal">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+            <h3>Cápsula do tempo</h3>
+            <p>Uma retrospectiva mensal do servidor ou só sua: minutos ouvidos, artistas mais tocados e um cartão para compartilhar.</p>
+          </article>
+          <article class="card reveal">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14v-2a9 9 0 0118 0v2"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/></svg></div>
+            <h3>Ouvir no site</h3>
+            <p>Um player independente, que toca no próprio navegador, sem precisar entrar em nenhum canal de voz.</p>
+          </article>
+          <article class="card reveal">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 7.5L12 3l4.5 4.5"/><path d="M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6"/></svg></div>
+            <h3>Compartilhe o que está tocando</h3>
+            <p>Gera uma imagem vertical da música atual, pronta para postar nos stories ou mandar para os amigos.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- TELAS -->
+    <section class="section alt" id="telas">
+      <div class="wrap">
+        <div class="head-center reveal">
+          <span class="eyebrow">Veja por dentro</span>
+          <h2 class="h2">Assim é o aplicativo</h2>
+          <p class="sub">Telas reais da demonstração. Dá para abrir e mexer em tudo, sem instalar nada.</p>
+        </div>
+        <div class="tabs reveal" role="tablist" aria-label="Telas do aplicativo">
+          <button class="tab" role="tab" aria-selected="true" data-i="0" type="button">Buscar</button>
+          <button class="tab" role="tab" aria-selected="false" data-i="1" type="button">Fila</button>
+          <button class="tab" role="tab" aria-selected="false" data-i="2" type="button">Playlists</button>
+          <button class="tab" role="tab" aria-selected="false" data-i="3" type="button">Cápsula do tempo</button>
+        </div>
+        <div class="show reveal">
+          <div class="frame">
+            <div class="frame-bar"><i></i><i></i><i></i><span>vitrola · painel</span></div>
+            <div class="frame-shots" id="shots">
+              <img class="on" src="img/buscar.webp" width="1900" height="1188" alt="Tela Buscar, com músicas recomendadas e playlists" />
+              <img src="img/fila.webp" width="1900" height="1188" alt="Tela Fila de reprodução, com a música atual e as próximas" loading="lazy" />
+              <img src="img/playlists.webp" width="1900" height="1188" alt="Tela Playlists, separadas em privadas, do servidor e públicas" loading="lazy" />
+              <img src="img/capsula.webp" width="1900" height="1188" alt="Tela Cápsula do tempo, com minutos ouvidos e artistas mais ouvidos" loading="lazy" />
+            </div>
+          </div>
+          <div class="show-copy" id="copy" aria-live="polite">
+            <h3 id="copy-t">Buscar</h3>
+            <p id="copy-p">A tela inicial já mostra o que importa: o que você mais ouve, suas playlists e gêneros para explorar.</p>
+            <ul class="checks" id="copy-l"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CELULAR -->
+    <section class="section" id="celular">
+      <div class="wrap mobile-block">
+        <div class="reveal"><div class="phone"><img src="img/celular.webp" width="780" height="1688" loading="lazy" alt="Vitrola no celular, com o player e a barra de navegação embaixo" /></div></div>
+        <div class="reveal">
+          <span class="eyebrow">No celular também</span>
+          <h2 class="h2">O mesmo painel, do sofá</h2>
+          <p class="sub">A interface se adapta à tela pequena: barra de navegação embaixo, player sempre à mão e a próxima música à vista. Os amigos podem abrir o painel de outro computador ou do celular.</p>
+          <div class="stats">
+            <div class="stat"><b>3</b><span>tipos de playlist</span></div>
+            <div class="stat"><b>2</b><span>modos de ouvir</span></div>
+            <div class="stat"><b>0</b><span>servidores centrais</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMO FUNCIONA -->
+    <section class="section alt" id="como-funciona">
+      <div class="wrap">
+        <div class="head-center reveal">
+          <span class="eyebrow">Como funciona</span>
+          <h2 class="h2">Do download à primeira música em poucos minutos</h2>
+          <p class="sub">No Windows, o instalador resolve o que falta. Você só precisa de uma conta no Discord.</p>
+        </div>
+        <div class="steps">
+          <div class="step reveal"><h3>Baixe e abra</h3><p>Baixe o projeto no GitHub e dê dois cliques em <code>Iniciar.bat</code>. Ele instala o que faltar, inclusive o Node.js.</p></div>
+          <div class="step reveal"><h3>Configure numa tela</h3><p>O navegador abre uma tela de configuração que guia o preenchimento do token do bot e do Client Secret.</p></div>
+          <div class="step reveal"><h3>Convide o bot</h3><p>Clique em <b>Convidar o bot para o meu servidor</b>, escolha o servidor e autorize.</p></div>
+          <div class="step reveal"><h3>Escolha e toque</h3><p>Abra o Vitrola, entre com o Discord e escolha a música. O bot entra no canal de voz onde você estiver.</p></div>
+        </div>
+        <p class="head-center reveal" style="margin:34px auto 0"><a class="btn btn-ghost" href="docs.html#instalacao">Ver o passo a passo completo</a></p>
+      </div>
+    </section>
+
+    <!-- PLAYLISTS / PRIVACIDADE -->
+    <section class="section" id="playlists">
+      <div class="wrap two">
+        <div class="reveal">
+          <span class="eyebrow">Você no controle</span>
+          <h2 class="h2">Cada playlist com a sua regra</h2>
+          <p class="sub" style="margin-bottom:26px">Escolha quem pode ver e tocar cada playlist. E como o bot roda no seu computador, nada passa por um servidor central: seus dados ficam com você.</p>
+          <ul class="checks">
+            <li>Token e secret ficam só no arquivo <span class="inline-code">.env</span> do seu computador</li>
+            <li>Login do Discord com escopo mínimo: perfil e lista de servidores</li>
+            <li>Permissões checadas em cada rota, com isolamento por servidor</li>
+          </ul>
+        </div>
+        <div class="vis reveal">
+          <div class="vis-row"><span class="tag priv">Privada</span><p>Só você vê e toca. Ideal para a sua seleção pessoal.</p></div>
+          <div class="vis-row"><span class="tag serv">Servidor</span><p>Todos os membros do servidor onde ela foi criada podem tocar.</p></div>
+          <div class="vis-row"><span class="tag pub">Pública</span><p>Qualquer pessoa logada pode ver e tocar. Só o dono edita.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section alt" id="faq">
+      <div class="wrap">
+        <div class="head-center reveal">
+          <span class="eyebrow">Perguntas frequentes</span>
+          <h2 class="h2">Ficou com dúvida?</h2>
+        </div>
+        <div class="faq reveal">
+          <details><summary>Preciso pagar alguma coisa?</summary><p>Não. O Vitrola é gratuito e de código aberto, sob licença MIT. A busca pelo Spotify é opcional; sem ela o bot usa o YouTube Music.</p></details>
+          <details><summary>Preciso deixar o computador ligado?</summary><p>Sim, enquanto quiser música. Cada pessoa roda o próprio bot no próprio computador e a janela do <code class="inline-code">Iniciar.bat</code> precisa ficar aberta. Para ficar 24/7, dá para hospedar numa máquina que fique sempre ligada, como explicado na <a href="docs.html#hospedagem">documentação</a>.</p></details>
+          <details><summary>Meus amigos conseguem abrir o painel?</summary><p>Quem só quer ouvir no Discord nem precisa do painel. Para os amigos controlarem o bot de outro computador, use um túnel gratuito da Cloudflare. O passo a passo está em <a href="docs.html#amigos">Amigos de outro computador</a>.</p></details>
+          <details><summary>A demonstração toca música de verdade?</summary><p>Não. Ela roda inteira no seu navegador, com músicas fictícias e áudio gerado na hora, só para você ver a interface funcionando. Nada é enviado ao Discord.</p></details>
+          <details><summary>Funciona no Mac ou no Linux?</summary><p>O instalador fácil (<code class="inline-code">Iniciar.bat</code>) é para Windows 10 e 11. Em outros sistemas, dá para rodar manualmente com Node.js: veja <a href="docs.html#desenvolvedores">Para desenvolvedores</a>.</p></details>
+          <details><summary>É permitido usar áudio do YouTube?</summary><p>O áudio é extraído com o yt-dlp, o que não é a forma oficialmente permitida pelos termos do YouTube. Por isso o projeto é educacional, para uso pessoal com amigos, e não deve ser vendido nem oferecido como serviço. Leia <a href="docs.html#uso-responsavel">Uso responsável</a>.</p></details>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA FINAL -->
+    <section class="section" style="padding-bottom:0">
+      <div class="wrap">
+        <div class="final reveal">
+          <h2 class="h2">Pronto para colocar o disco para tocar?</h2>
+          <p class="sub">Abra a demonstração agora, sem instalar nada, ou baixe o projeto e rode o seu próprio bot.</p>
+          <div class="cta-row">
+            <a class="btn btn-discord" href="demo/?entrar">Entrar na demonstração</a>
+            <a class="btn btn-ghost" href="https://github.com/ismash1598/Vitrola" target="_blank" rel="noopener">Baixar no GitHub</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site">
+    <div class="wrap">
+      <div class="foot-grid">
+        <div>
+          <a class="brand" href="./"><span class="brand-mark"></span><span class="brand-name">Vitrola</span></a>
+          <p style="color:var(--text-dim3);font-size:14.5px;max-width:34ch;margin:14px 0 0">O bot de música do seu servidor Discord, com painel web e Cápsula do tempo.</p>
+        </div>
+        <div><h4>Produto</h4><ul><li><a href="#recursos">Recursos</a></li><li><a href="#telas">Telas</a></li><li><a href="#como-funciona">Como funciona</a></li><li><a href="demo/?entrar">Demonstração</a></li></ul></div>
+        <div><h4>Documentação</h4><ul><li><a href="docs.html#instalacao">Instalação</a></li><li><a href="docs.html#spotify">Spotify</a></li><li><a href="docs.html#api">API</a></li><li><a href="docs.html#problemas">Problemas comuns</a></li></ul></div>
+        <div><h4>Projeto</h4><ul><li><a href="https://github.com/ismash1598/Vitrola" target="_blank" rel="noopener">GitHub</a></li><li><a href="https://github.com/ismash1598/Vitrola/blob/main/LICENSE" target="_blank" rel="noopener">Licença MIT</a></li><li><a href="demo/privacy-policy.html">Privacidade</a></li><li><a href="demo/terms-of-service.html">Termos de uso</a></li></ul></div>
+      </div>
+      <p class="foot-note">Projeto pessoal, feito para estudo e uso próprio com amigos. Sem afiliação com Discord, YouTube ou Spotify. O código é MIT; a licença não dá direitos sobre as músicas nem sobre as plataformas, que seguem os próprios termos.</p>
+    </div>
+  </footer>
+
+  <script src="site.js"></script>
+</body>
+</html>

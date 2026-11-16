@@ -6,7 +6,7 @@ Bot de música para Discord **com painel web**: busca, fila com autoplay, playli
 
 ## Demonstração
 
-**[Abra a demo no navegador](https://ismash1598.github.io/Vitrola/)** — sem login, sem instalar nada. Ela roda inteira no seu navegador: as músicas são **fictícias** e o áudio é gerado na hora, só para você ver a interface funcionando (busca, fila, autoplay, playlists, "Cápsula do tempo"). Nada é enviado ao Discord. A versão de verdade, com o bot tocando no canal de voz, é a que você instala abaixo.
+**[Veja o site do Vitrola](https://ismash1598.github.io/Vitrola/)** (apresentação, [documentação](https://ismash1598.github.io/Vitrola/docs.html) e demonstração; clique em **Entrar na demonstração**) — sem login, sem instalar nada. Ela roda inteira no seu navegador: as músicas são **fictícias** e o áudio é gerado na hora, só para você ver a interface funcionando (busca, fila, autoplay, playlists, "Cápsula do tempo"). Nada é enviado ao Discord. A versão de verdade, com o bot tocando no canal de voz, é a que você instala abaixo.
 
 Ao escolher **Ouvir no site** ou **Ouvir no Discord**, um **tutorial passo a passo** destaca cada botão e explica o que fazer (dá para pular, rever pelo link "Tutorial" na faixa lateral ou voltar à tela inicial por "Início"). Toda vez que a demo é aberta numa aba nova, ela começa pela tela inicial do projeto.
 
@@ -129,9 +129,10 @@ src/
 ├── api/                     # rotas REST e login OAuth
 └── db/                      # playlists
 public/                      # front-end estático (também usado pelo app Android)
+site/                        # página de apresentação (index.html) e documentação (docs.html)
 demo/demo.js                 # API simulada no navegador, só para o site de demonstração
 demo/tour.js                 # tutorial passo a passo da demonstração
-scripts/build-demo.js        # monta o site da demo (public/ + demo.js + tour.js) em dist-demo/
+scripts/build-demo.js        # monta o site publicado em dist-demo/: site/ na raiz e a demo (public/ + demo.js + tour.js) em /demo/
 .github/workflows/pages.yml  # publica a demo no GitHub Pages a cada push na main
 test/                        # testes automatizados
 Iniciar.bat / Configurar.bat # launchers do Windows

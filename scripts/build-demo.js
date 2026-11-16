@@ -1,6 +1,7 @@
-// Monta o site de demonstração (GitHub Pages) em dist-demo/:
-// uma cópia de public/ + demo/demo.js (API simulada) + demo/tour.js (tutorial
-// guiado), carregados antes do app.js.
+// Monta o site publicado no GitHub Pages em dist-demo/:
+//   /            página de apresentação (site/index.html) e documentação (site/docs.html)
+//   /demo/       a demonstração: uma cópia de public/ + demo/demo.js (API simulada)
+//                + demo/tour.js (tutorial guiado), carregados antes do app.js.
 // Uso: npm run demo:build   (o workflow .github/workflows/pages.yml faz o mesmo)
 const fs = require('fs');
 const path = require('path');
@@ -26,10 +27,19 @@ function buildDemo({ root = path.join(__dirname, '..'), outDir = path.join(root,
   return outDir;
 }
 
+// Site completo: apresentação + documentação na raiz e a demonstração em /demo/.
+function buildSite({ root = path.join(__dirname, '..'), outDir = path.join(root, 'dist-demo') } = {}) {
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.cpSync(path.join(root, 'site'), outDir, { recursive: true });
+  buildDemo({ root, outDir: path.join(outDir, 'demo') });
+  fs.writeFileSync(path.join(outDir, '.nojekyll'), '');
+  return outDir;
+}
+
 // Servidor estático mínimo, só para olhar a demo localmente (npm run demo:serve).
 function serveDir(dir, port) {
   const http = require('http');
-  const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
+  const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.ico': 'image/x-icon' };
   const server = http.createServer((req, res) => {
     let pathname;
     try {
@@ -38,7 +48,8 @@ function serveDir(dir, port) {
       res.writeHead(400);
       return res.end('requisicao invalida');
     }
-    const file = path.join(dir, pathname === '/' ? 'index.html' : pathname);
+    // como o Pages: um caminho que termina em "/" abre o index.html daquela pasta
+    const file = path.join(dir, pathname.endsWith('/') ? pathname + 'index.html' : pathname);
     // não deixa "../" sair da pasta da demo
     if (!file.startsWith(dir + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
       res.writeHead(404);
@@ -53,9 +64,9 @@ function serveDir(dir, port) {
 }
 
 if (require.main === module) {
-  const out = buildDemo();
-  console.log(`Demo gerada em ${out}`);
+  const out = buildSite();
+  console.log(`Site gerado em ${out}`);
   if (process.argv.includes('--serve')) serveDir(out, Number(process.env.PORT) || 8080);
 }
 
-module.exports = { buildDemo, serveDir };
+module.exports = { buildDemo, buildSite, serveDir };

@@ -643,6 +643,18 @@
   // a pagina de apresentacao. Se o navegador nao deixar usar sessionStorage,
   // mantem como esta (senao "Entrar" recarregaria para a landing em loop).
   const STARTED_KEY = 'vitrolaDemoStarted';
+  // Vindo do site de apresentacao (botao "Entrar na demonstracao"), o link traz
+  // ?entrar: ja entra direto, sem repetir a tela inicial, e limpa o parametro.
+  try {
+    const params = new URLSearchParams(win.location.search);
+    if (params.has('entrar')) {
+      win.localStorage.setItem('sessionToken', TOKEN);
+      win.sessionStorage.setItem(STARTED_KEY, '1');
+      params.delete('entrar');
+      const qs = params.toString();
+      win.history.replaceState(null, '', win.location.pathname + (qs ? '?' + qs : '') + win.location.hash);
+    }
+  } catch { /* sem storage: cai na tela inicial da demo, como antes */ }
   let started = true;
   try { started = win.sessionStorage.getItem(STARTED_KEY) === '1'; } catch { started = true; }
   if (!started) {
@@ -652,7 +664,9 @@
   function goToLanding() {
     try { win.localStorage.removeItem('sessionToken'); } catch { /* ok */ }
     try { win.sessionStorage.removeItem(STARTED_KEY); } catch { /* ok */ }
-    win.location.reload();
+    // No site publicado a demo fica em /demo/ e a apresentacao na pagina de cima.
+    if (/\/demo\/?$/.test(win.location.pathname)) win.location.href = '../';
+    else win.location.reload();
   }
 
   // --- fetch: qualquer /api/... e respondido aqui, nada sai da pagina ---
